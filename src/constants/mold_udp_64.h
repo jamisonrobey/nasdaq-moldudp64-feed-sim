@@ -5,7 +5,7 @@
 
 namespace MoldUDP64
 {
-constexpr std::size_t session_id_size{10};
+inline constexpr std::size_t session_id_size{10};
 }
 
 #endif

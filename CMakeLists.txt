@@ -13,7 +13,15 @@ FetchContent_MakeAvailable(cli11)
 add_subdirectory(external/jamutils)
 
 
-add_executable(nasdaq-moldudp64-feed-sim src/main.cpp)
+add_executable(nasdaq-moldudp64-feed-sim src/main.cpp 
+                                         src/server/message_buffer.cpp)
 target_link_libraries(nasdaq-moldudp64-feed-sim PRIVATE 
                       CLI11::CLI11
                       jamutils)
+
+
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

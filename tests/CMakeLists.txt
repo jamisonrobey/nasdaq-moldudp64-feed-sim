@@ -20,6 +20,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_SAVE}")
 # Create test executable
 add_executable(tests
     test_message_buffer.cpp
+    test_itch_extract_timestamp.cpp
 )
 
 # Link against gtest, your source files, and dependencies
@@ -34,7 +35,8 @@ target_include_directories(tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 # Add source files that need to be tested (non-main sources)
 target_sources(tests PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/server/message_buffer.cpp
+    ${PROJECT_SOURCE_DIR}/src/message_buffer.cpp
+    ${PROJECT_SOURCE_DIR}/src/itch.cpp
 )
 
 # Discover tests

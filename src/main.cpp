@@ -4,8 +4,9 @@
 
 #include <CLI/CLI.hpp>
 
-#include "constants/nasdaq.h"
-#include "constants/mold_udp_64.h"
+#include "itch.h"
+#include "nasdaq.h"
+#include "mold_udp_64.h"
 
 int main(int argc, char** argv)
 {
@@ -46,7 +47,7 @@ int main(int argc, char** argv)
         ->capture_default_str();
 
     bool downstream_mcast_loopback{false};
-    cli.add_option("--downstream-mcast-loopback", downstream_mcast_loopback, "Enable downstream loopback")
+    cli.add_flag("--loopback", downstream_mcast_loopback, "Enable downstream loopback")
         ->capture_default_str();
 
     double replay_speed{1};
@@ -66,7 +67,7 @@ int main(int argc, char** argv)
         ->check(CLI::Range(1025, 65535))
         ->capture_default_str();
 
-    std::size_t retrans_buffer_size{1U << 2U};
+    std::size_t retrans_buffer_size{1U << 22U};
     cli.add_option("--retrans-buffer-size", retrans_buffer_size, "Retransmission buffer size")
         ->capture_default_str();
 
@@ -78,6 +79,8 @@ int main(int argc, char** argv)
         ->capture_default_str();
 
     CLI11_PARSE(cli, argc, argv);
+
+    Itch::extract_timestamp(nullptr);
 
     return 0;
 }

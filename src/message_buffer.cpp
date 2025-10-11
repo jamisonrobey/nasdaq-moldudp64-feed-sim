@@ -17,6 +17,7 @@ MessageBuffer::MessageBuffer(std::size_t buffer_size)
 void MessageBuffer::push(Message msg)
 {
 #ifndef NDEBUG
+    // todo: this is slow asf (even for debug) convert to static local cache
     for (const auto& [seq, _] : buffer_)
     {
         assert(msg.seq_num != seq && "Duplicate sequence was added to buffer");

@@ -14,13 +14,15 @@ add_subdirectory(external/jamutils)
 
 
 add_executable(nasdaq-moldudp64-feed-sim src/main.cpp 
-                                         src/server/message_buffer.cpp)
+                                         src/message_buffer.cpp
+                                         src/itch.cpp)
+                                         
 target_link_libraries(nasdaq-moldudp64-feed-sim PRIVATE 
                       CLI11::CLI11
                       jamutils)
 
 
-option(BUILD_TESTS "Build tests" ON)
+option(BUILD_TESTS "Build tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

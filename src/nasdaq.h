@@ -6,6 +6,7 @@
 
 namespace Nasdaq
 {
+
 enum class MarketPhase
 {
     pre,

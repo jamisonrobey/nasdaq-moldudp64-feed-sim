@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <limits>
 
-#include "server/message_buffer.h"
+#include "message_buffer.h"
 
 class MessageBufferTest : public ::testing::Test
 {

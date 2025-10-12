@@ -23,8 +23,6 @@ class MessageBuffer
 
     explicit MessageBuffer(std::size_t buffer_size);
 
-    // todo: could be worth profiling to see if reference is faster but I think as this is only few
-    // words should be faster to copy (https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-in).
     void push(Message msg);
 
     [[nodiscard]]
@@ -35,7 +33,7 @@ class MessageBuffer
 
   private:
     std::vector<Message> buffer_;
-    std::atomic<std::uint64_t> write_seq_{0};
+    alignas(64) std::atomic<std::uint64_t> write_seq_{0};
 };
 
 #endif

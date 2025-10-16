@@ -6,11 +6,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-target_compile_options(gtest PRIVATE -Wno-ctor-dtor-privacy)
-target_compile_options(gtest_main PRIVATE -Wno-ctor-dtor-privacy)
-target_compile_options(gmock PRIVATE -Wno-ctor-dtor-privacy)
-target_compile_options(gmock_main PRIVATE -Wno-ctor-dtor-privacy)
-
 add_executable(tests
     test_message_buffer.cpp
     test_itch_extract_timestamp.cpp

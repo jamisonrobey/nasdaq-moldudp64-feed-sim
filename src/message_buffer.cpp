@@ -2,9 +2,11 @@
 
 #include <stdexcept>
 #include <cassert>
+#include <vector>
 
 MessageBuffer::MessageBuffer(std::size_t buffer_size)
 {
+
     if ((buffer_size & (buffer_size - 1)) != 0 || buffer_size == 0)
     {
         throw std::invalid_argument("MessageBuffer is designed to be used with buffer_size that is a pow of 2");
@@ -16,14 +18,6 @@ MessageBuffer::MessageBuffer(std::size_t buffer_size)
 
 void MessageBuffer::push(Message msg)
 {
-#ifndef NDEBUG
-    // todo: this is slow asf (even for debug) convert to static local cache
-    for (const auto& [seq, _] : buffer_)
-    {
-        assert(msg.seq_num != seq && "Duplicate sequence was added to buffer");
-    }
-#endif
-
     const auto idx{msg.seq_num % buffer_.size()};
 
     buffer_[idx].seq_num = msg.seq_num;
@@ -40,7 +34,8 @@ std::optional<std::size_t> MessageBuffer::get_file_pos_for_seq(std::uint64_t seq
 
     if (seq_num + buffer_.size() <= current_seq ||
         seq_num > current_seq ||
-        current_seq == 0) // empty
+        // empty
+        current_seq == 0)
     {
         return std::nullopt;
     }

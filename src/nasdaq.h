@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <map>
+#include <string>
 
 namespace Nasdaq
 {

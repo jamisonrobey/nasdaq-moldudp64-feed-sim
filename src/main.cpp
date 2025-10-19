@@ -1,15 +1,26 @@
 #include <string>
 #include <filesystem>
 #include <cstddef>
-
+#include <thread>
+#include <print>
 #include <CLI/CLI.hpp>
 
-#include "itch.h"
 #include "nasdaq.h"
 #include "mold_udp_64.h"
+#include "downstream_server.h"
+
+#include "jamutils/M_Map.h"
+#include "retransmission_server.h"
 
 int main(int argc, char** argv)
 {
+
+#ifdef DEBUG_NO_SLEEP
+    std::println("DEBUG_NO_SLEEP is defined!");
+#else
+    std::println("DEBUG_NO_SLEEP is NOT defined!");
+#endif
+
     CLI::App cli{"Description to replace"};
 
     std::string mold_session;
@@ -31,18 +42,18 @@ int main(int argc, char** argv)
         ->check(CLI::ExistingFile);
 
     std::string downstream_mcast_group{"239.0.0.1"};
-    cli.add_option("--downstream-mcast-group",
+    cli.add_option("--downstream-mcast-group, --group",
                    downstream_mcast_group,
                    "Downstream multicast group")
         ->capture_default_str();
 
     int downstream_port{3400};
-    cli.add_option("--downstream_port", downstream_port, "Downstream port")
+    cli.add_option("--downstream-port", downstream_port, "Downstream port")
         ->check(CLI::Range(1024, 65535))
         ->capture_default_str();
 
     int downstream_mcast_ttl{1};
-    cli.add_option("--mcast-ttl", downstream_mcast_ttl, "Downstream TTL")
+    cli.add_option("--mcast-ttl, --ttl", downstream_mcast_ttl, "Downstream TTL")
         ->check(CLI::Range(0, 255))
         ->capture_default_str();
 
@@ -51,7 +62,7 @@ int main(int argc, char** argv)
         ->capture_default_str();
 
     double replay_speed{1};
-    cli.add_option("--replay-speed", replay_speed, "Downstream replay speed")
+    cli.add_option("--replay-speed, --speed", replay_speed, "Downstream replay speed")
         ->capture_default_str();
 
     std::string retrans_address{"127.0.0.1"};
@@ -71,8 +82,12 @@ int main(int argc, char** argv)
     cli.add_option("--retrans-buffer-size", retrans_buffer_size, "Retransmission buffer size")
         ->capture_default_str();
 
+    auto retrans_threads{std::thread::hardware_concurrency()};
+    cli.add_option("--retrans-threads, --threads", retrans_threads, "Number of retransmission threads")
+        ->capture_default_str();
+
     Nasdaq::MarketPhase start_phase{Nasdaq::MarketPhase::pre};
-    cli.add_option("start-phase", start_phase, "Market phase to start replay (pre, open, close)")
+    cli.add_option("--start-phase, --start", start_phase, "Market phase to start replay (pre, open, close)")
         ->transform(
             CLI::CheckedTransformer(Nasdaq::market_phase_map,
                                     CLI::ignore_case))
@@ -80,7 +95,34 @@ int main(int argc, char** argv)
 
     CLI11_PARSE(cli, argc, argv);
 
-    Itch::extract_timestamp(nullptr);
+    jam_utils::M_Map file{itch_replay_file, PROT_READ, MAP_PRIVATE | MAP_POPULATE, 0};
+
+    MessageBuffer replay_buffer{retrans_buffer_size};
+
+    RetransmissionServer retrans_server{
+        mold_session,
+        retrans_address,
+        static_cast<std::uint16_t>(retrans_port),
+        file.as_span<const std::byte>(),
+        &replay_buffer,
+        retrans_threads};
+
+    DownstreamServer downstream_server{
+        mold_session,
+        file.as_span<const std::byte>(),
+        &replay_buffer,
+        downstream_mcast_group,
+        static_cast<std::uint16_t>(downstream_port),
+        static_cast<std::uint8_t>(downstream_mcast_ttl),
+        downstream_mcast_loopback,
+        replay_speed,
+        start_phase};
+
+    // run downstream in main thread
+    downstream_server.run();
+
+    // when we're finished we stop the retransmission cleanly
+    retrans_server.stop();
 
     return 0;
 }

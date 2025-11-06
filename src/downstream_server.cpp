@@ -27,10 +27,15 @@ DownstreamServer::DownstreamServer(std::string_view session,
       pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase)},
       sock_{socket(AF_INET, SOCK_DGRAM, 0)}
 {
-    constexpr auto opt{1};
-    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
-        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_TTL, &mcast_ttl, sizeof(mcast_ttl)) < 0 ||
-        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback)) < 0)
+    constexpr auto sockopt_on{1};
+    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
+        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_TTL, &mcast_ttl, sizeof(mcast_ttl)) < 0)
+    {
+        throw std::system_error(errno, std::system_category());
+    }
+
+    const int loopback_opt = loopback ? 1 : 0; // opt needs to be int* (bool* is ub)
+    if (setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loopback_opt, sizeof(loopback_opt)) < 0)
     {
         throw std::system_error(errno, std::system_category());
     }

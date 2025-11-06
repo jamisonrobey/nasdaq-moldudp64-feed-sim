@@ -62,7 +62,7 @@ void DownstreamServer::run()
     while (file_pos < file_.size())
     {
         packet_builder_.reset(seq_num);
-        std::chrono::nanoseconds packet_timestamp{};
+        std::optional<std::chrono::nanoseconds> packet_timestamp{std::nullopt};
 
         while (const auto message{Itch::seek_next_message(file_, file_pos)})
         {
@@ -76,20 +76,22 @@ void DownstreamServer::run()
             last_seq_num = seq_num;
 #endif
 
-            if (packet_timestamp.count() == 0)
+            if (!packet_timestamp.has_value())
             {
                 packet_timestamp = Itch::extract_timestamp(message->subspan(Itch::len_prefix_size, Itch::timestamp_size));
             }
+
             file_pos += message->size();
             buffer_->push({.seq_num = seq_num, .file_pos = file_pos});
             ++seq_num;
         }
 
-        if (const auto delay{pacer_.get_delay(packet_timestamp)})
+        if (const auto delay{pacer_.get_delay(*packet_timestamp)})
         {
 #ifndef DEBUG_NO_SLEEP
             std::this_thread::sleep_for(*delay);
 #endif
+
 #ifndef DEBUG_NO_NETWORK
             send_packet();
 #endif

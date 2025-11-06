@@ -2,25 +2,11 @@
 
 #include <chrono>
 #include <stdexcept>
+#include <cassert>
 #include <cstring>
 #include <netdb.h>
 
 using namespace Itch;
-
-std::chrono::nanoseconds Itch::extract_timestamp(std::span<const std::byte> message)
-{
-    std::uint64_t timestamp = 0;
-    for (std::size_t i = 0; i < timestamp_size; ++i)
-    {
-        timestamp = (timestamp << 8) | std::to_integer<std::uint64_t>(message[timestamp_offset + i]);
-    }
-    const auto timestamp_duration = std::chrono::nanoseconds{timestamp};
-    if (timestamp_duration >= max_timestamp)
-    {
-        throw std::out_of_range("Timestamp exceeds 24 hours");
-    }
-    return timestamp_duration;
-}
 
 std::optional<std::span<const std::byte>> Itch::seek_next_message(std::span<const std::byte> file, std::size_t file_pos)
 {
@@ -42,4 +28,27 @@ std::optional<std::span<const std::byte>> Itch::seek_next_message(std::span<cons
     }
 
     return std::span{file.subspan(file_pos, total_msg_len)};
+}
+
+std::chrono::nanoseconds Itch::extract_timestamp(std::span<const std::byte> bytes)
+{
+    if (bytes.size() < timestamp_size)
+    {
+
+        throw std::invalid_argument("Too small to contain a valid timestamp");
+    }
+
+    std::uint64_t timestamp = 0;
+    for (std::size_t i = 0; i < timestamp_size; ++i)
+    {
+        timestamp = (timestamp << 8) | std::to_integer<std::uint64_t>(bytes[i]);
+    }
+
+    const auto timestamp_duration = std::chrono::nanoseconds{timestamp};
+    if (timestamp_duration >= max_timestamp)
+    {
+        throw std::out_of_range("Timestamp exceeds 24 hours");
+    }
+
+    return timestamp_duration;
 }

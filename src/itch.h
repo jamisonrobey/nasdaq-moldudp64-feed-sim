@@ -29,7 +29,7 @@ struct MessageView
 std::optional<std::span<const std::byte>> seek_next_message(std::span<const std::byte> file, std::size_t file_pos);
 
 // // reads 6-byte big-endian timestamp as u64 then returns as chrono::nanoseconds
-std::chrono::nanoseconds extract_timestamp(std::span<const std::byte> message);
+std::chrono::nanoseconds extract_timestamp(std::span<const std::byte> bytes);
 }
 
 #endif

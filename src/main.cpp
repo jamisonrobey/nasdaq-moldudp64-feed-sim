@@ -15,12 +15,6 @@
 int main(int argc, char** argv)
 {
 
-#ifdef DEBUG_NO_SLEEP
-    std::println("DEBUG_NO_SLEEP is defined!");
-#else
-    std::println("DEBUG_NO_SLEEP is NOT defined!");
-#endif
-
     CLI::App cli{"Description to replace"};
 
     std::string mold_session;

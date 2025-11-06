@@ -78,7 +78,7 @@ void DownstreamServer::run()
 
             if (packet_timestamp.count() == 0)
             {
-                packet_timestamp = Itch::extract_timestamp(*message);
+                packet_timestamp = Itch::extract_timestamp(message->subspan(Itch::len_prefix_size, Itch::timestamp_size));
             }
             file_pos += message->size();
             buffer_->push({.seq_num = seq_num, .file_pos = file_pos});

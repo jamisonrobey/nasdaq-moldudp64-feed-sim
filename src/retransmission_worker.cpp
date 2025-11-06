@@ -3,6 +3,7 @@
 #include "mold_udp_64.h"
 
 #include <arpa/inet.h>
+#include <endian.h>
 #include <sys/epoll.h>
 #include <print>
 #include <iostream>
@@ -139,7 +140,7 @@ std::optional<RetransmissionWorker::RequestContext> RetransmissionWorker::try_pa
     }
 
     ctx.request.msg_count = ntohs(ctx.request.msg_count);
-    ctx.request.sequence_num = htobe64(ctx.request.sequence_num);
+    ctx.request.sequence_num = be64toh(ctx.request.sequence_num);
     const auto file_pos{msg_buffer_->get_file_pos_for_seq(ctx.request.sequence_num)};
 
     if (!file_pos)

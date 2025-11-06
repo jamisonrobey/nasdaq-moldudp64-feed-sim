@@ -10,6 +10,7 @@
 #include <thread>
 #include <print>
 #include <iostream>
+#include <cassert>
 
 DownstreamServer::DownstreamServer(std::string_view session,
                                    std::span<const std::byte> file,
@@ -69,6 +70,12 @@ void DownstreamServer::run()
             {
                 break;
             }
+#ifndef NDEBUG
+            static std::uint64_t last_seq_num{};
+            assert(last_seq_num < seq_num && "downstream sequence number not monotonically increasing");
+            last_seq_num = seq_num;
+#endif
+
             if (packet_timestamp.count() == 0)
             {
                 packet_timestamp = Itch::extract_timestamp(*message);

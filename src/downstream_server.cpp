@@ -25,7 +25,7 @@ DownstreamServer::DownstreamServer(std::string_view session,
     : packet_builder_{session},
       file_{file},
       buffer_{message_buffer},
-      pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase)},
+      pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase), std::chrono::steady_clock::now()},
       sock_{socket(AF_INET, SOCK_DGRAM, 0)}
 {
     constexpr auto sockopt_on{1};

@@ -29,7 +29,7 @@ class DownstreamServer
     PacketBuilder packet_builder_;
     std::span<const std::byte> file_;
     MessageBuffer* buffer_;
-    TemporalPacer pacer_;
+    TemporalPacer<> pacer_;
 
     jam_utils::FD sock_;
     sockaddr_in dest_addr_{};

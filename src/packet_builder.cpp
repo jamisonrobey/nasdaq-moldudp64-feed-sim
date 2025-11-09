@@ -22,13 +22,6 @@ bool PacketBuilder::empty() const
     return header_.msg_count == 0;
 }
 
-void PacketBuilder::reset(std::uint64_t seq_num)
-{
-    header_.sequence_num = htobe64(seq_num);
-    header_.msg_count = 0;
-    size_ = sizeof(MoldUDP64::DownstreamHeader);
-}
-
 const std::byte* PacketBuilder::cbegin() const
 {
     return packet_.cbegin();
@@ -37,6 +30,18 @@ const std::byte* PacketBuilder::cbegin() const
 const MoldUDP64::Session& PacketBuilder::session() const
 {
     return header_.session;
+}
+
+std::uint16_t PacketBuilder::msg_count() const
+{
+    return header_.msg_count;
+}
+
+void PacketBuilder::reset(std::uint64_t seq_num)
+{
+    header_.sequence_num = htobe64(seq_num);
+    header_.msg_count = 0;
+    size_ = sizeof(MoldUDP64::DownstreamHeader);
 }
 
 bool PacketBuilder::try_add_message(std::span<const std::byte> message)

@@ -1,6 +1,10 @@
+#include <pthread.h>
+#include <sched.h>
 #include <string>
 #include <filesystem>
 #include <cstddef>
+#include <cstring>
+#include <system_error>
 #include <thread>
 #include <print>
 #include <CLI/CLI.hpp>
@@ -112,10 +116,9 @@ int main(int argc, char** argv)
         replay_speed,
         start_phase};
 
-    // run downstream in main thread
+    // run downstream in this thread
     downstream_server.run();
-
-    // when we're finished we stop the retransmission cleanly
+    // here means downstream has finished so signal retransmission to stop
     retrans_server.stop();
 
     return 0;

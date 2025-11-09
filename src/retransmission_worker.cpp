@@ -21,9 +21,9 @@ RetransmissionWorker::RetransmissionWorker(std::string_view session,
       sock_{socket(AF_INET, SOCK_DGRAM, 0)},
       epfd_{epoll_create1(0)}
 {
-    constexpr auto opt{1};
-    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0 ||
-        setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    constexpr auto sockopt_on{1};
+    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEPORT, &sockopt_on, sizeof(sockopt_on)) < 0 ||
+        setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0)
     {
         throw std::system_error(errno, std::system_category());
     }
@@ -79,35 +79,53 @@ void RetransmissionWorker::run()
             }
             throw std::system_error(errno, std::system_category());
         }
-
-        for (std::size_t i = 0; i < static_cast<std::size_t>(nfds); ++i)
+        if (!handle_events(nfds))
         {
-            const epoll_event& ev{events_[i]};
-            const int client_fd{ev.data.fd};
-            if (client_fd == shutdown_fd_)
+            break;
+        }
+    }
+}
+
+bool RetransmissionWorker::handle_events(int nfds)
+{
+    for (std::size_t i = 0; i < static_cast<std::size_t>(nfds); ++i)
+    {
+        const epoll_event& ev{events_[i]};
+        const int client_fd{ev.data.fd};
+
+        if (client_fd == shutdown_fd_)
+        {
+            return false;
+        }
+
+        if ((ev.events & EPOLLIN) != 0)
+        {
+            process_retransmission_request(client_fd);
+        }
+    }
+    return true;
+}
+
+void RetransmissionWorker::process_retransmission_request(int client_fd)
+{
+    while (auto req_ctx{try_parse_request(client_fd)})
+    {
+        packet_builder_.reset(req_ctx->request.sequence_num);
+
+        while (packet_builder_.msg_count() < req_ctx->request.msg_count)
+        {
+            const auto message = Itch::seek_next_message(file_, req_ctx->file_pos_for_retrans);
+            if (!message)
             {
-                return;
+                break;
             }
 
-            if ((ev.events & EPOLLIN) != 0)
+            if (!packet_builder_.try_add_message(*message))
             {
-                while (auto req_ctx{try_parse_request(client_fd)})
-                {
-                    packet_builder_.reset(req_ctx->request.sequence_num);
-
-                    while (const auto message{Itch::seek_next_message(file_, req_ctx->file_pos_for_retrans)})
-                    {
-                        if (!packet_builder_.try_add_message(*message))
-                        {
 #ifndef DEBUG_NO_NETWORK
-                            send_packet(req_ctx->client_addr);
+                send_packet(req_ctx->client_addr);
 #endif
-                            break;
-                        }
-                    }
-                    // the request gives us the first sequence number and we can just modify the request and use it as the response header as retransmission and downstream headers are identical
-                    ++req_ctx->request.sequence_num;
-                }
+                break;
             }
         }
     }
@@ -141,8 +159,8 @@ std::optional<RetransmissionWorker::RequestContext> RetransmissionWorker::try_pa
 
     ctx.request.msg_count = ntohs(ctx.request.msg_count);
     ctx.request.sequence_num = be64toh(ctx.request.sequence_num);
-    const auto file_pos{msg_buffer_->get_file_pos_for_seq(ctx.request.sequence_num)};
 
+    const auto file_pos{msg_buffer_->get_file_pos_for_seq(ctx.request.sequence_num)};
     if (!file_pos)
     {
         return std::nullopt;

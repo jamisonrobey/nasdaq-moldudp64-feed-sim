@@ -23,6 +23,9 @@ class PacketBuilder
     [[nodiscard]]
     const MoldUDP64::Session& session() const;
 
+    [[nodiscard]]
+    std::uint16_t msg_count() const;
+
     void reset(std::uint64_t mold_seq_num);
 
     bool try_add_message(std::span<const std::byte> message);

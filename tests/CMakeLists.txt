@@ -8,9 +8,11 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(tests
     test_message_buffer.cpp
-    test_itch_extract_timestamp.cpp
     ${PROJECT_SOURCE_DIR}/src/message_buffer.cpp
+    test_itch_extract_timestamp.cpp
     ${PROJECT_SOURCE_DIR}/src/itch.cpp
+    test_temporal_pacer.cpp
+    ${PROJECT_SOURCE_DIR}/src/temporal_pacer.h
 )
 
 target_link_libraries(tests PRIVATE GTest::gtest_main jamutils)

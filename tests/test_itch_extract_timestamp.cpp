@@ -4,6 +4,7 @@
 
 namespace
 {
+
 // u64 into itch timestamp (6-byte big-endian)
 constexpr std::array<std::byte, Itch::timestamp_size> encode_big_endian_timestamp(std::uint64_t value)
 {
@@ -15,6 +16,7 @@ constexpr std::array<std::byte, Itch::timestamp_size> encode_big_endian_timestam
     }
     return bytes;
 }
+
 }
 
 TEST(ItchTest, ExtractTimestamp_ZeroValue)

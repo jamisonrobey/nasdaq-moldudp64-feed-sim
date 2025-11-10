@@ -9,9 +9,6 @@ class PacketBuilder
     explicit PacketBuilder(std::string_view session);
 
     [[nodiscard]]
-    std::span<const std::byte> message_block() const;
-
-    [[nodiscard]]
     bool empty() const;
 
     [[nodiscard]]
@@ -28,6 +25,9 @@ class PacketBuilder
 
     [[nodiscard]]
     std::uint16_t msg_count() const;
+
+    [[nodiscard]]
+    std::span<const std::byte> message_block() const;
 
     void reset(std::uint64_t mold_seq_num);
 

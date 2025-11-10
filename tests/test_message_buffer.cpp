@@ -3,36 +3,37 @@
 
 #include "message_buffer.h"
 
-class MessageBufferTest : public ::testing::Test
+namespace
 {
-  protected:
-    static void expect_found(MessageBuffer& buff, std::uint64_t seq_num, std::size_t expected_pos)
-    {
-        const auto res{buff.get_file_pos_for_seq(seq_num)};
-        ASSERT_TRUE(res.has_value())
-            << "Expected seq_num " << seq_num << " to be found in buffer";
-        EXPECT_EQ(*res, expected_pos)
-            << "seq_num " << seq_num << " has wrong file_pos";
-    }
 
-    static void expect_not_found(MessageBuffer& buff, std::uint64_t seq_num)
-    {
-        const auto res{buff.get_file_pos_for_seq(seq_num)};
-        EXPECT_FALSE(res.has_value())
-            << "Expected seq_num " << seq_num << " to NOT be found in buffer";
-    }
+void expect_found(MessageBuffer& buff, std::uint64_t seq_num, std::size_t expected_pos)
+{
+    const auto res{buff.get_file_pos_for_seq(seq_num)};
+    ASSERT_TRUE(res.has_value())
+        << "Expected seq_num " << seq_num << " to be found in buffer";
+    EXPECT_EQ(*res, expected_pos)
+        << "seq_num " << seq_num << " has wrong file_pos";
+}
 
-    static void push_range(MessageBuffer& buff, std::uint64_t start_seq, std::uint64_t count)
-    {
-        for (std::uint64_t i = 0; i < count; ++i)
-        {
-            const std::uint64_t seq{start_seq + i};
-            buff.push({.seq_num = seq, .file_pos = seq});
-        }
-    }
-};
+void expect_not_found(MessageBuffer& buff, std::uint64_t seq_num)
+{
+    const auto res{buff.get_file_pos_for_seq(seq_num)};
+    EXPECT_FALSE(res.has_value())
+        << "Expected seq_num " << seq_num << " to NOT be found in buffer";
+}
 
-TEST_F(MessageBufferTest, Constructor_ValidatesPowerOfTwo)
+void push_range(MessageBuffer& buff, std::uint64_t start_seq, std::uint64_t count)
+{
+    for (std::uint64_t i = 0; i < count; ++i)
+    {
+        const std::uint64_t seq{start_seq + i};
+        buff.push({.seq_num = seq, .file_pos = seq});
+    }
+}
+
+}
+
+TEST(MessageBufferTest, Constructor_ValidatesPowerOfTwo)
 {
     EXPECT_NO_THROW(MessageBuffer(4));
     EXPECT_NO_THROW(MessageBuffer(1024));
@@ -42,7 +43,7 @@ TEST_F(MessageBufferTest, Constructor_ValidatesPowerOfTwo)
     EXPECT_THROW(MessageBuffer(5), std::invalid_argument);
 }
 
-TEST_F(MessageBufferTest, EmptyBuffer_ReturnsNullopt)
+TEST(MessageBufferTest, EmptyBuffer_ReturnsNullopt)
 {
     MessageBuffer buff{4};
     expect_not_found(buff, 0); // seq_num 0 is invalid; but guards against matching default-initialized buffer slots
@@ -50,7 +51,7 @@ TEST_F(MessageBufferTest, EmptyBuffer_ReturnsNullopt)
     expect_not_found(buff, std::numeric_limits<std::uint64_t>::max());
 }
 
-TEST_F(MessageBufferTest, PushAndRetrieve_Works)
+TEST(MessageBufferTest, PushAndRetrieve_Works)
 {
     MessageBuffer buff{2};
 
@@ -61,7 +62,7 @@ TEST_F(MessageBufferTest, PushAndRetrieve_Works)
     expect_found(buff, 2, 2000);
 }
 
-TEST_F(MessageBufferTest, WrapAround_EvictsOldest)
+TEST(MessageBufferTest, WrapAround_EvictsOldest)
 {
     MessageBuffer buff{4};
 
@@ -72,7 +73,7 @@ TEST_F(MessageBufferTest, WrapAround_EvictsOldest)
     expect_found(buff, 5, 5);  // latest
 }
 
-TEST_F(MessageBufferTest, Boundaries_TooOldAndTooNew)
+TEST(MessageBufferTest, Boundaries_TooOldAndTooNew)
 {
     MessageBuffer buff{4};
 
@@ -86,7 +87,7 @@ TEST_F(MessageBufferTest, Boundaries_TooOldAndTooNew)
     expect_found(buff, 8, 8); // latest
 }
 
-TEST_F(MessageBufferTest, SlotCollision_OverwritesCorrectly)
+TEST(MessageBufferTest, SlotCollision_OverwritesCorrectly)
 {
     MessageBuffer buff{4};
 

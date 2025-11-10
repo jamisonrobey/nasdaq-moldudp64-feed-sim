@@ -10,6 +10,7 @@
 #include <thread>
 #include <print>
 #include <iostream>
+#include <cassert>
 
 DownstreamServer::DownstreamServer(std::string_view session,
                                    std::span<const std::byte> file,
@@ -24,13 +25,18 @@ DownstreamServer::DownstreamServer(std::string_view session,
     : packet_builder_{session},
       file_{file},
       buffer_{message_buffer},
-      pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase)},
+      pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase), std::chrono::steady_clock::now()},
       sock_{socket(AF_INET, SOCK_DGRAM, 0)}
 {
-    constexpr auto opt{1};
-    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
-        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_TTL, &mcast_ttl, sizeof(mcast_ttl)) < 0 ||
-        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback)) < 0)
+    constexpr auto sockopt_on{1};
+    if (setsockopt(sock_.fd(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
+        setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_TTL, &mcast_ttl, sizeof(mcast_ttl)) < 0)
+    {
+        throw std::system_error(errno, std::system_category());
+    }
+
+    const int loopback_opt = loopback ? 1 : 0; // opt needs to be int* (bool* is ub)
+    if (setsockopt(sock_.fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loopback_opt, sizeof(loopback_opt)) < 0)
     {
         throw std::system_error(errno, std::system_category());
     }
@@ -56,7 +62,7 @@ void DownstreamServer::run()
     while (file_pos < file_.size())
     {
         packet_builder_.reset(seq_num);
-        std::chrono::nanoseconds packet_timestamp{};
+        std::optional<std::chrono::nanoseconds> packet_timestamp{std::nullopt};
 
         while (const auto message{Itch::seek_next_message(file_, file_pos)})
         {
@@ -64,20 +70,28 @@ void DownstreamServer::run()
             {
                 break;
             }
-            if (packet_timestamp.count() == 0)
+#ifndef NDEBUG
+            static std::uint64_t last_seq_num{};
+            assert(last_seq_num < seq_num && "downstream sequence number not monotonically increasing");
+            last_seq_num = seq_num;
+#endif
+
+            if (!packet_timestamp.has_value())
             {
-                packet_timestamp = Itch::extract_timestamp(*message);
+                packet_timestamp = Itch::extract_timestamp(message->subspan(Itch::len_prefix_size, Itch::timestamp_size));
             }
+
             file_pos += message->size();
             buffer_->push({.seq_num = seq_num, .file_pos = file_pos});
             ++seq_num;
         }
 
-        if (const auto delay{pacer_.get_delay(packet_timestamp)})
+        if (const auto delay{pacer_.get_delay(*packet_timestamp)})
         {
 #ifndef DEBUG_NO_SLEEP
             std::this_thread::sleep_for(*delay);
 #endif
+
 #ifndef DEBUG_NO_NETWORK
             send_packet();
 #endif

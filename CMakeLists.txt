@@ -18,7 +18,6 @@ add_subdirectory(external/jamutils)
   src/mold_udp_64.cpp
   src/message_buffer.cpp
   src/packet_builder.cpp
-  src/temporal_pacer.cpp
   src/downstream_server.cpp
   src/retransmission_server.cpp
   src/retransmission_worker.cpp

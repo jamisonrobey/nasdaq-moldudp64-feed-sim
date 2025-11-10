@@ -44,8 +44,9 @@ class RetransmissionWorker
         sockaddr_in client_addr{};
     };
 
+    bool handle_events(int nfds);
+    void process_retransmission_request(int client_fd);
     std::optional<RequestContext> try_parse_request(int client_fd);
-
     void send_packet(sockaddr_in& client_addr);
 };
 

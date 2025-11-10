@@ -33,6 +33,10 @@ struct [[gnu::packed]] DownstreamHeader
 
 static_assert(std::is_trivially_copyable_v<DownstreamHeader>);
 
+constexpr std::size_t header_seq_num_offset{session_id_size};
+
+constexpr std::size_t max_message_block_size{max_payload_size - sizeof(DownstreamHeader)};
+
 using RetransmissionRequest = DownstreamHeader;
 
 using Packet = std::array<std::byte, max_payload_size>;

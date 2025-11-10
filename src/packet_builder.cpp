@@ -1,6 +1,9 @@
 #include "packet_builder.h"
+#include "mold_udp_64.h"
 
 #include <arpa/inet.h>
+#include <cstring>
+#include <endian.h>
 
 PacketBuilder::PacketBuilder(std::string_view session)
     : header_{session}
@@ -30,6 +33,11 @@ const std::byte* PacketBuilder::cbegin() const
 const MoldUDP64::Session& PacketBuilder::session() const
 {
     return header_.session;
+}
+
+std::uint64_t PacketBuilder::seq_num() const
+{
+    return be64toh(header_.sequence_num);
 }
 
 std::uint16_t PacketBuilder::msg_count() const

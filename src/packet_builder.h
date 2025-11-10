@@ -24,6 +24,9 @@ class PacketBuilder
     const MoldUDP64::Session& session() const;
 
     [[nodiscard]]
+    std::uint64_t seq_num() const;
+
+    [[nodiscard]]
     std::uint16_t msg_count() const;
 
     void reset(std::uint64_t mold_seq_num);
@@ -34,7 +37,7 @@ class PacketBuilder
 
   private:
     MoldUDP64::Packet packet_{};
-    std::size_t size_{};
+    std::size_t size_{sizeof(MoldUDP64::DownstreamHeader)};
     MoldUDP64::DownstreamHeader header_;
 };
 

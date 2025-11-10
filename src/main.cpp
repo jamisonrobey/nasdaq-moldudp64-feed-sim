@@ -1,12 +1,9 @@
-#include <pthread.h>
 #include <sched.h>
 #include <string>
 #include <filesystem>
 #include <cstddef>
 #include <cstring>
-#include <system_error>
 #include <thread>
-#include <print>
 #include <CLI/CLI.hpp>
 
 #include "nasdaq.h"
@@ -84,7 +81,7 @@ int main(int argc, char** argv)
     cli.add_option("--retrans-threads, --threads", retrans_threads, "Number of retransmission threads")
         ->capture_default_str();
 
-    Nasdaq::MarketPhase start_phase{Nasdaq::MarketPhase::pre};
+    auto start_phase{Nasdaq::MarketPhase::pre};
     cli.add_option("--start-phase, --start", start_phase, "Market phase to start replay (pre, open, close)")
         ->transform(
             CLI::CheckedTransformer(Nasdaq::market_phase_map,
@@ -93,11 +90,11 @@ int main(int argc, char** argv)
 
     CLI11_PARSE(cli, argc, argv);
 
-    jam_utils::M_Map file{itch_replay_file, PROT_READ, MAP_PRIVATE | MAP_POPULATE, 0};
+    const jam_utils::M_Map file{itch_replay_file, PROT_READ, MAP_PRIVATE | MAP_POPULATE, 0};
 
     MessageBuffer replay_buffer{retrans_buffer_size};
 
-    RetransmissionServer retrans_server{
+    const RetransmissionServer retrans_server{
         mold_session,
         retrans_address,
         static_cast<std::uint16_t>(retrans_port),

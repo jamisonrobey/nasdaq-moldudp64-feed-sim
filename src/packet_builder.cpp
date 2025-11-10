@@ -15,10 +15,7 @@ std::size_t PacketBuilder::size() const
     return size_;
 }
 
-std::span<const std::byte> PacketBuilder::message_block() const
-{
-    return std::span{packet_}.subspan(sizeof(MoldUDP64::DownstreamHeader));
-}
+
 
 bool PacketBuilder::empty() const
 {
@@ -43,6 +40,12 @@ std::uint64_t PacketBuilder::seq_num() const
 std::uint16_t PacketBuilder::msg_count() const
 {
     return header_.msg_count;
+}
+
+std::span<const std::byte> PacketBuilder::message_block() const
+{
+    const auto msg_block_size{size_ - sizeof(header_)};
+    return std::span{packet_}.subspan(sizeof(header_), msg_block_size);
 }
 
 void PacketBuilder::reset(std::uint64_t seq_num)

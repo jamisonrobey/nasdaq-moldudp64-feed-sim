@@ -1,6 +1,6 @@
 #include "retransmission_server.h"
-
 #include "retransmission_worker.h"
+
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <netinet/in.h>
@@ -10,19 +10,19 @@ RetransmissionServer::RetransmissionServer(std::string_view session,
                                            std::string_view address,
                                            std::uint16_t port,
                                            std::span<const std::byte> file,
-                                           MessageBuffer* buffer,
+                                           RetransmissionBuffer* retrans_buffer,
                                            std::size_t num_threads)
 {
     for (std::size_t i = 0; i < num_threads; ++i)
     {
-        workers_.emplace_back([session, address, port, file, buffer, this] {
+        workers_.emplace_back([session, address, port, file, retrans_buffer, this] {
             RetransmissionWorker worker{
                 session,
                 address,
                 port,
                 shutdown_fd_,
                 file,
-                buffer};
+                retrans_buffer};
             worker.run();
         });
     }

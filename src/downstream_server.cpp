@@ -1,6 +1,5 @@
 #include "downstream_server.h"
 #include "itch.h"
-#include "message_buffer.h"
 #include "mold_udp_64.h"
 #include "nasdaq.h"
 
@@ -14,7 +13,7 @@
 
 DownstreamServer::DownstreamServer(std::string_view session,
                                    std::span<const std::byte> file,
-                                   MessageBuffer* message_buffer,
+                                   RetransmissionBuffer* retrans_buffer,
                                    std::string_view mcast_group,
                                    std::uint16_t port,
                                    std::uint8_t mcast_ttl,
@@ -24,7 +23,7 @@ DownstreamServer::DownstreamServer(std::string_view session,
 
     : packet_builder_{session},
       file_{file},
-      buffer_{message_buffer},
+      retrans_buffer_{retrans_buffer},
       pacer_{replay_speed, Nasdaq::market_phase_to_timestamp(start_phase), std::chrono::steady_clock::now()},
       sock_{socket(AF_INET, SOCK_DGRAM, 0)}
 {
@@ -82,7 +81,7 @@ void DownstreamServer::run()
             }
 
             file_pos += message->size();
-            buffer_->push({.seq_num = seq_num, .file_pos = file_pos});
+            retrans_buffer_->push({.seq_num = seq_num, .file_pos = file_pos});
             ++seq_num;
         }
 

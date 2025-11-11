@@ -13,11 +13,11 @@ RetransmissionWorker::RetransmissionWorker(std::string_view session,
                                            std::uint16_t port,
                                            int shutdown_fd,
                                            std::span<const std::byte> file,
-                                           MessageBuffer* msg_buffer)
+                                           RetransmissionBuffer* retrans_buffer)
     : packet_builder_{session},
       shutdown_fd_{shutdown_fd},
       file_{file},
-      msg_buffer_{msg_buffer},
+      retrans_buffer_{retrans_buffer},
       sock_{socket(AF_INET, SOCK_DGRAM, 0)},
       epfd_{epoll_create1(0)}
 {
@@ -160,7 +160,7 @@ std::optional<RetransmissionWorker::RequestContext> RetransmissionWorker::try_pa
     ctx.request.msg_count = ntohs(ctx.request.msg_count);
     ctx.request.sequence_num = be64toh(ctx.request.sequence_num);
 
-    const auto file_pos{msg_buffer_->get_file_pos_for_seq(ctx.request.sequence_num)};
+    const auto file_pos{retrans_buffer_->get_file_pos_for_seq(ctx.request.sequence_num)};
     if (!file_pos)
     {
         return std::nullopt;

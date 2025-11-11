@@ -1,7 +1,7 @@
 #ifndef RETRANSMISSION_SERVER
 #define RETRANSMISSION_SERVER
 
-#include "message_buffer.h"
+#include "retransmission_buffer.h"
 
 #include <thread>
 #include <vector>
@@ -14,7 +14,7 @@ class RetransmissionServer
                          std::string_view address,
                          std::uint16_t port,
                          std::span<const std::byte> file,
-                         MessageBuffer* buffer,
+                         RetransmissionBuffer* buffer,
                          std::size_t num_threads);
 
     void stop() const;

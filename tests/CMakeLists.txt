@@ -7,12 +7,12 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(tests
-    test_message_buffer.cpp
+    test_retransmission_buffer.cpp
     test_itch_extract_timestamp.cpp
     test_temporal_pacer.cpp
     test_packet_builder.cpp
 
-    ${PROJECT_SOURCE_DIR}/src/message_buffer.cpp
+    ${PROJECT_SOURCE_DIR}/src/retransmission_buffer.cpp
     ${PROJECT_SOURCE_DIR}/src/itch.cpp
     ${PROJECT_SOURCE_DIR}/src/temporal_pacer.h
     ${PROJECT_SOURCE_DIR}/src/packet_builder.cpp

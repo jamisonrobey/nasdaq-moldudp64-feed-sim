@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 #include <limits>
 
-#include "message_buffer.h"
+#include "retransmission_buffer.h"
 
 namespace
 {
 
-void expect_found(MessageBuffer& buff, std::uint64_t seq_num, std::size_t expected_pos)
+void expect_found(RetransmissionBuffer& buff, std::uint64_t seq_num, std::size_t expected_pos)
 {
     const auto res{buff.get_file_pos_for_seq(seq_num)};
     ASSERT_TRUE(res.has_value())
@@ -15,14 +15,14 @@ void expect_found(MessageBuffer& buff, std::uint64_t seq_num, std::size_t expect
         << "seq_num " << seq_num << " has wrong file_pos";
 }
 
-void expect_not_found(MessageBuffer& buff, std::uint64_t seq_num)
+void expect_not_found(RetransmissionBuffer& buff, std::uint64_t seq_num)
 {
     const auto res{buff.get_file_pos_for_seq(seq_num)};
     EXPECT_FALSE(res.has_value())
         << "Expected seq_num " << seq_num << " to NOT be found in buffer";
 }
 
-void push_range(MessageBuffer& buff, std::uint64_t start_seq, std::uint64_t count)
+void push_range(RetransmissionBuffer& buff, std::uint64_t start_seq, std::uint64_t count)
 {
     for (std::uint64_t i = 0; i < count; ++i)
     {
@@ -33,27 +33,27 @@ void push_range(MessageBuffer& buff, std::uint64_t start_seq, std::uint64_t coun
 
 }
 
-TEST(MessageBufferTest, Constructor_ValidatesPowerOfTwo)
+TEST(RetransmissionBufferTest, Constructor_ValidatesPowerOfTwo)
 {
-    EXPECT_NO_THROW(MessageBuffer(4));
-    EXPECT_NO_THROW(MessageBuffer(1024));
+    EXPECT_NO_THROW(RetransmissionBuffer(4));
+    EXPECT_NO_THROW(RetransmissionBuffer(1024));
 
-    EXPECT_THROW(MessageBuffer(0), std::invalid_argument);
-    EXPECT_THROW(MessageBuffer(3), std::invalid_argument);
-    EXPECT_THROW(MessageBuffer(5), std::invalid_argument);
+    EXPECT_THROW(RetransmissionBuffer(0), std::invalid_argument);
+    EXPECT_THROW(RetransmissionBuffer(3), std::invalid_argument);
+    EXPECT_THROW(RetransmissionBuffer(5), std::invalid_argument);
 }
 
-TEST(MessageBufferTest, EmptyBuffer_ReturnsNullopt)
+TEST(RetransmissionBufferTest, EmptyBuffer_ReturnsNullopt)
 {
-    MessageBuffer buff{4};
+    RetransmissionBuffer buff{4};
     expect_not_found(buff, 0); // seq_num 0 is invalid; but guards against matching default-initialized buffer slots
     expect_not_found(buff, 1);
     expect_not_found(buff, std::numeric_limits<std::uint64_t>::max());
 }
 
-TEST(MessageBufferTest, PushAndRetrieve_Works)
+TEST(RetransmissionBufferTest, PushAndRetrieve_Works)
 {
-    MessageBuffer buff{2};
+    RetransmissionBuffer buff{2};
 
     buff.push({.seq_num = 1, .file_pos = 1000});
     buff.push({.seq_num = 2, .file_pos = 2000});
@@ -62,9 +62,9 @@ TEST(MessageBufferTest, PushAndRetrieve_Works)
     expect_found(buff, 2, 2000);
 }
 
-TEST(MessageBufferTest, WrapAround_EvictsOldest)
+TEST(RetransmissionBufferTest, WrapAround_EvictsOldest)
 {
-    MessageBuffer buff{4};
+    RetransmissionBuffer buff{4};
 
     push_range(buff, 1, 5); // write over oldest
 
@@ -73,9 +73,9 @@ TEST(MessageBufferTest, WrapAround_EvictsOldest)
     expect_found(buff, 5, 5);  // latest
 }
 
-TEST(MessageBufferTest, Boundaries_TooOldAndTooNew)
+TEST(RetransmissionBufferTest, Boundaries_TooOldAndTooNew)
 {
-    MessageBuffer buff{4};
+    RetransmissionBuffer buff{4};
 
     push_range(buff, 1, 8); // contains 5,6,7,8
 
@@ -87,9 +87,9 @@ TEST(MessageBufferTest, Boundaries_TooOldAndTooNew)
     expect_found(buff, 8, 8); // latest
 }
 
-TEST(MessageBufferTest, SlotCollision_OverwritesCorrectly)
+TEST(RetransmissionBufferTest, SlotCollision_OverwritesCorrectly)
 {
-    MessageBuffer buff{4};
+    RetransmissionBuffer buff{4};
 
     push_range(buff, 1, 4);
     buff.push({.seq_num = 5, .file_pos = 5000});

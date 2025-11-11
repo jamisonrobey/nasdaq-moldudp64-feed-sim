@@ -2,7 +2,7 @@
 #define RETRANSMISSION_WORKER_H
 
 #include "jamutils/FD.h"
-#include "message_buffer.h"
+#include "retransmission_buffer.h"
 #include "mold_udp_64.h"
 #include "packet_builder.h"
 #include <sys/epoll.h>
@@ -22,7 +22,7 @@ class RetransmissionWorker
                          std::uint16_t port,
                          int shutdown_fd,
                          std::span<const std::byte> file,
-                         MessageBuffer* msg_buffer);
+                         RetransmissionBuffer* retrans_buffer);
 
     void run();
 
@@ -30,7 +30,7 @@ class RetransmissionWorker
     PacketBuilder packet_builder_;
     int shutdown_fd_;
     std::span<const std::byte> file_;
-    MessageBuffer* msg_buffer_;
+    RetransmissionBuffer* retrans_buffer_;
 
     jam_utils::FD sock_;
     jam_utils::FD epfd_;

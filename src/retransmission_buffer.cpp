@@ -1,10 +1,10 @@
-#include "message_buffer.h"
+#include "retransmission_buffer.h"
 
 #include <stdexcept>
 #include <cassert>
 #include <vector>
 
-MessageBuffer::MessageBuffer(std::size_t buffer_size)
+RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)
 {
 
     if ((buffer_size & (buffer_size - 1)) != 0 || buffer_size == 0)
@@ -16,7 +16,7 @@ MessageBuffer::MessageBuffer(std::size_t buffer_size)
 
 // pre: called from one thread with unique, monotonically increasing sequence numbers
 
-void MessageBuffer::push(Message msg)
+void RetransmissionBuffer::push(Message msg)
 {
     const auto idx{msg.seq_num % buffer_.size()};
 
@@ -28,7 +28,7 @@ void MessageBuffer::push(Message msg)
 
 // pre: all sequence nums are unique
 
-std::optional<std::size_t> MessageBuffer::get_file_pos_for_seq(std::uint64_t seq_num)
+std::optional<std::size_t> RetransmissionBuffer::get_file_pos_for_seq(std::uint64_t seq_num)
 {
     const auto current_seq{write_seq_.load(std::memory_order_acquire)};
 
@@ -50,7 +50,7 @@ std::optional<std::size_t> MessageBuffer::get_file_pos_for_seq(std::uint64_t seq
     return entry.file_pos;
 }
 
-std::size_t MessageBuffer::size() const
+std::size_t RetransmissionBuffer::size() const
 {
     return buffer_.size();
 }

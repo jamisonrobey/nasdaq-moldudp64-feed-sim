@@ -19,7 +19,7 @@ add_subdirectory(external/jamutils)
   src/main.cpp
   src/itch.cpp
   src/mold_udp_64.cpp
-  src/message_buffer.cpp
+  src/retransmission_buffer.cpp
   src/packet_builder.cpp
   src/downstream_server.cpp
   src/retransmission_server.cpp

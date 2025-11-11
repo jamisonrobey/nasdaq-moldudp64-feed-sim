@@ -1,5 +1,5 @@
-#ifndef MESSAGE_BUFFER_H
-#define MESSAGE_BUFFER_H
+#ifndef RETRANSMISSION_BUFFER_H
+#define RETRANSMISSION_BUFFER_H
 
 #include <vector>
 #include <atomic>
@@ -12,7 +12,7 @@
   servers, we only have the one downstream feed/thread.
 */
 
-class MessageBuffer
+class RetransmissionBuffer
 {
   public:
     struct Message
@@ -21,7 +21,7 @@ class MessageBuffer
         std::size_t file_pos;
     };
 
-    explicit MessageBuffer(std::size_t buffer_size);
+    explicit RetransmissionBuffer(std::size_t buffer_size);
 
     void push(Message msg);
 

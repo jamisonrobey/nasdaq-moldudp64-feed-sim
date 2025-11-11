@@ -92,20 +92,20 @@ int main(int argc, char** argv)
 
     const jam_utils::M_Map file{itch_replay_file, PROT_READ, MAP_PRIVATE | MAP_POPULATE, 0};
 
-    MessageBuffer replay_buffer{retrans_buffer_size};
+    RetransmissionBuffer retrans_buffer{retrans_buffer_size};
 
     const RetransmissionServer retrans_server{
         mold_session,
         retrans_address,
         static_cast<std::uint16_t>(retrans_port),
         file.as_span<const std::byte>(),
-        &replay_buffer,
+        &retrans_buffer,
         retrans_threads};
 
     DownstreamServer downstream_server{
         mold_session,
         file.as_span<const std::byte>(),
-        &replay_buffer,
+        &retrans_buffer,
         downstream_mcast_group,
         static_cast<std::uint16_t>(downstream_port),
         static_cast<std::uint8_t>(downstream_mcast_ttl),

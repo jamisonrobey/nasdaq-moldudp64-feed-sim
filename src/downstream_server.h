@@ -2,7 +2,7 @@
 #define DOWNSTREAM_SERVER_H
 
 #include "jamutils/FD.h"
-#include "message_buffer.h"
+#include "retransmission_buffer.h"
 #include "packet_builder.h"
 #include "temporal_pacer.h"
 #include "nasdaq.h"
@@ -15,7 +15,7 @@ class DownstreamServer
   public:
     DownstreamServer(std::string_view session,
                      std::span<const std::byte> file,
-                     MessageBuffer* message_buffer,
+                     RetransmissionBuffer* retrans_buffer,
                      std::string_view mcast_group,
                      std::uint16_t port,
                      std::uint8_t mcast_ttl,
@@ -28,7 +28,7 @@ class DownstreamServer
   private:
     PacketBuilder packet_builder_;
     std::span<const std::byte> file_;
-    MessageBuffer* buffer_;
+    RetransmissionBuffer* retrans_buffer_;
     TemporalPacer<> pacer_;
 
     jam_utils::FD sock_;

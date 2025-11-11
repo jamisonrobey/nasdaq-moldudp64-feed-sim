@@ -16,7 +16,7 @@
 int main(int argc, char** argv)
 {
 
-    CLI::App cli{"Description to replace"};
+    CLI::App cli{};
 
     std::string mold_session;
     cli.add_option("mold-session", mold_session, "MoldUDP64 Session")

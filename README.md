@@ -11,7 +11,7 @@
 - `ninja` 
   - If using the `cmake` presets
 ```bash
-git clone https://github.com/jamisonrobey/nasdaq-moldudp64-feed-sim.git --recursive
+git clone https://github.com/jamisonrobey/nasdaq-moldudp64-feed-sim.git --recursive itch-mold-replay
 cd itch-mold-replay
 cmake --preset release
 cd build-release && ninja

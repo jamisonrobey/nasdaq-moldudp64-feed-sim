@@ -6,7 +6,8 @@
 ## Build
 ### Requirements
 - Linux
-- `gcc` >= 14
+- `gcc` >= 15
+  - It might work on gcc 14 but only tested on 15
 - `cmake` >= 3.20
 - `ninja` 
   - If using the `cmake` presets

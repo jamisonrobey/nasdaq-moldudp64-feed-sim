@@ -39,8 +39,8 @@ if(DEBUG_NO_SLEEP)
 endif()
 
 
-option(BUILD_TESTS "Build tests" OFF)
-if(BUILD_TESTS)
+option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+if(BUILD_UNIT_TESTS)
     enable_testing()
-    add_subdirectory(tests)
+    add_subdirectory(tests/unit)
 endif()

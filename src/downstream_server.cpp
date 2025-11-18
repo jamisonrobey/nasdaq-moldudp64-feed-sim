@@ -80,8 +80,8 @@ void DownstreamServer::run()
 		packet_timestamp = Itch::extract_timestamp(message->subspan(Itch::timestamp_offset, Itch::timestamp_size));
             }
 
-            file_pos += message->size();
             retrans_buffer_->push({.seq_num = seq_num, .file_pos = file_pos});
+            file_pos += message->size();
             ++seq_num;
         }
 

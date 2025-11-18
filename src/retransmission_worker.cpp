@@ -112,21 +112,24 @@ void RetransmissionWorker::process_retransmission_request(int client_fd)
     {
         packet_builder_.reset(req_ctx->request.sequence_num);
 
+        auto current_file_pos = req_ctx->file_pos_for_retrans;
+
         while (packet_builder_.msg_count() < req_ctx->request.msg_count)
         {
-            const auto message = Itch::seek_next_message(file_, req_ctx->file_pos_for_retrans);
-            if (!message)
+            const auto message = Itch::seek_next_message(file_, current_file_pos);
+            if (!message || !packet_builder_.try_add_message(*message))
             {
                 break;
             }
 
-            if (!packet_builder_.try_add_message(*message))
-            {
+            current_file_pos += message->size();
+        }
+
+        if (packet_builder_.msg_count() > 0)
+        {
 #ifndef DEBUG_NO_NETWORK
-                send_packet(req_ctx->client_addr);
+            send_packet(req_ctx->client_addr);
 #endif
-                break;
-            }
         }
     }
 }

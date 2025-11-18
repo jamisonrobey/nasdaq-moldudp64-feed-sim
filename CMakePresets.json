@@ -1,36 +1,36 @@
 {
-  "version": 2,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 19,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "description": "with sanitisers",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-debug",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "23",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_FLAGS": "-g3 -O0 -Werror -Wall -Wextra -Wpedantic -Walloca -Wcast-align -Wcast-qual -Wdeprecated-copy-dtor -Wdouble-promotion -Wduplicated-branches -Wduplicated-cond -Wenum-conversion -Wextra-semi -Wfloat-equal -Wformat-overflow=2 -Wformat-signedness -Wformat=2 -Wlogical-op -Wmismatched-tags -Wnoexcept -Wnon-virtual-dtor -Woverloaded-virtual -Wpointer-arith -Wrange-loop-construct -Wrestrict -Wshadow -Wstrict-null-sentinel -Wvla -Wvolatile -Wwrite-strings -Wold-style-cast -Wsign-promo -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization -Wstrict-overflow=2 -Wundef -Wtype-limits -Wmissing-format-attribute -Wunreachable-code -Wconversion -Warith-conversion -Wshift-overflow=2 -Wstringop-overflow=4 -Wtrampolines -Wzero-as-null-pointer-constant -Wnull-dereference -fstack-protector-strong -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -fstack-clash-protection -fcf-protection=full -fno-omit-frame-pointer -fno-delete-null-pointer-checks -fno-strict-aliasing -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract -fsanitize-address-use-after-scope -fno-sanitize-recover=all -fsanitize-undefined-trap-on-error"
-      }
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
     },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "description": "No runtime penalty",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-release",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "23",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_FLAGS": "-DNDEBUG -Werror -Wall -Wextra -Wpedantic -Walloca -Wcast-align -Wcast-qual -Wdeprecated-copy-dtor -Wdouble-promotion -Wduplicated-branches -Wduplicated-cond -Wenum-conversion -Wextra-semi -Wfloat-equal -Wformat-overflow=2 -Wformat-signedness -Wformat=2 -Wlogical-op -Wmismatched-tags -Wnoexcept -Wnon-virtual-dtor -Woverloaded-virtual -Wpointer-arith -Wrange-loop-construct -Wrestrict -Wshadow -Wstrict-null-sentinel -Wvla -Wvolatile -Wwrite-strings -Wold-style-cast -Wsign-promo -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization -Wstrict-overflow=2 -Wundef -Wtype-limits -Wmissing-format-attribute -Wunreachable-code -Wconversion -Warith-conversion -Wshift-overflow=2 -Wstringop-overflow=4 -Wtrampolines -Wzero-as-null-pointer-constant -O3 -flto=auto -march=native -mtune=native -fomit-frame-pointer"
-      }
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "description": "with sanitisers",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-debug",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_CXX_STANDARD": "23",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_FLAGS": "-g3 -Werror -Wall -Wextra -Wpedantic -Walloca -Wcast-align -Wcast-qual -Wdeprecated-copy-dtor -Wdouble-promotion -Wduplicated-branches -Wduplicated-cond -Wenum-conversion -Wextra-semi -Wfloat-equal -Wformat-overflow=2 -Wformat-signedness -Wformat=2 -Wlogical-op -Wmismatched-tags -Wnoexcept -Wnon-virtual-dtor -Woverloaded-virtual -Wpointer-arith -Wrange-loop-construct -Wrestrict -Wshadow -Wstrict-null-sentinel -Wvla -Wvolatile -Wwrite-strings -Wold-style-cast -Wsign-promo -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization -Wstrict-overflow=2 -Wundef -Wtype-limits -Wmissing-format-attribute -Wunreachable-code -Wconversion -Warith-conversion -Wshift-overflow=2 -Wstringop-overflow=4 -Wtrampolines -Wzero-as-null-pointer-constant -Wnull-dereference -fstack-protector-strong -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -fstack-clash-protection -fcf-protection=full -fno-omit-frame-pointer -fno-delete-null-pointer-checks -fno-strict-aliasing -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract -fsanitize-address-use-after-scope -fno-sanitize-recover=all -fsanitize-undefined-trap-on-error"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "description": "No runtime penalty",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-release",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_CXX_STANDARD": "23",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_FLAGS": "-DNDEBUG -Werror -Wall -Wextra -Wpedantic -Walloca -Wcast-align -Wcast-qual -Wdeprecated-copy-dtor -Wdouble-promotion -Wduplicated-branches -Wduplicated-cond -Wenum-conversion -Wextra-semi -Wfloat-equal -Wformat-overflow=2 -Wformat-signedness -Wformat=2 -Wlogical-op -Wmismatched-tags -Wnoexcept -Wnon-virtual-dtor -Woverloaded-virtual -Wpointer-arith -Wrange-loop-construct -Wrestrict -Wshadow -Wstrict-null-sentinel -Wvla -Wvolatile -Wwrite-strings -Wold-style-cast -Wsign-promo -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization -Wstrict-overflow=2 -Wundef -Wtype-limits -Wmissing-format-attribute -Wunreachable-code -Wconversion -Warith-conversion -Wshift-overflow=2 -Wstringop-overflow=4 -Wtrampolines -Wzero-as-null-pointer-constant -O3 -flto=auto -march=native -mtune=native -fomit-frame-pointer"
+            }
+        }
+    ]
 }

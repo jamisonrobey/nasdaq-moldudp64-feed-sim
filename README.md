@@ -11,6 +11,8 @@
 - `cmake` >= 3.20
 - `ninja` 
   - If using the `cmake` presets
+- sanitizers: `libasan`, `libubsan`, `liblsan`, `libcfi`
+  - only needed for debug cmake preset 
 ```bash
 git clone https://github.com/jamisonrobey/nasdaq-moldudp64-feed-sim.git --recursive itch-mold-replay
 cd itch-mold-replay

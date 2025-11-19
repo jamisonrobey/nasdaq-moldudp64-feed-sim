@@ -38,7 +38,7 @@ You can pass some flags to CMake compiler which are useful for profiling or debu
   - `-DDEBUG_NO_SLEEP=On`
     - calls to sleep not compiled which disables replay simulation
  - `-DBUILD_TESTS=On`
-    - build unit tests
+    - build unit tests (run with CTest)
 ## Usage
 ### Replay file
 - You can obtain TotalView-ITCH data from [emi.nasdaq.com/ITCH/](https://emi.nasdaq.com/ITCH/)
@@ -83,6 +83,16 @@ OPTIONS:
 ./itch_mold_replay SESSION001 path/to/itch_file --loopback --ttl 2
 # w/ replay_speed 50x and starting at market open
 ./itch_mold_replay SESSION001 --replay-speed 50x --start-phase open 
+```
+### E2E Test
+The project includes a python test suite that validates the server from a client's perspective.
+
+**Running locally:**
+```bash
+pip install -r tests/e2e/requirements.txt
+pytest -v -s tests/e2e/e2e.py \
+  --path-to-server ./build-release/nasdaq-moldudp64-feed-sim \
+  --path-to-sample-file ./tests/e2e/data/12302019_SNIPPET.NASDAQ_ITCH50
 ```
 ## Useful tools 
 ### Traffic control (`tc`)

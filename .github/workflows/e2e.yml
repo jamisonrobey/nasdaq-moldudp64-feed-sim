@@ -29,6 +29,9 @@ jobs:
           name: build-output-${{ matrix.build_type }}
           path: build-${{ matrix.build_type }}/
 
+      - name: Make executable
+        run: chmod +x ./build-${{ matrix.build_type }}/nasdaq-moldudp64-feed-sim
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

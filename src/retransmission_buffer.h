@@ -33,6 +33,7 @@ class RetransmissionBuffer
 
   private:
     std::vector<Message> buffer_;
+    std::size_t mask_;
     alignas(64) std::atomic<std::uint64_t> write_seq_{0};
 };
 

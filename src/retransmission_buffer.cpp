@@ -5,6 +5,7 @@
 #include <vector>
 
 RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)
+    : mask_{buffer_size - 1}
 {
 
     if ((buffer_size & (buffer_size - 1)) != 0 || buffer_size == 0)
@@ -18,7 +19,7 @@ RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)
 
 void RetransmissionBuffer::push(Message msg)
 {
-    const auto idx{msg.seq_num % buffer_.size()};
+    const auto idx{msg.seq_num & mask_};
 
     buffer_[idx].seq_num = msg.seq_num;
     buffer_[idx].file_pos = msg.file_pos;
@@ -40,7 +41,7 @@ std::optional<std::size_t> RetransmissionBuffer::get_file_pos_for_seq(std::uint6
         return std::nullopt;
     }
 
-    const auto& entry{buffer_[seq_num % buffer_.size()]};
+    const auto& entry{buffer_[seq_num & mask_]};
 
     if (entry.seq_num != seq_num)
     {

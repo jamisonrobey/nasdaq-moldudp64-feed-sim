@@ -9,7 +9,6 @@
         {
             "name": "debug",
             "displayName": "Debug",
-            "description": "with sanitisers",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build-debug",
             "cacheVariables": {
@@ -22,7 +21,6 @@
         {
             "name": "release",
             "displayName": "Release",
-            "description": "No runtime penalty",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build-release",
             "cacheVariables": {
@@ -31,6 +29,14 @@
                 "CMAKE_CXX_STANDARD_REQUIRED": "ON",
                 "CMAKE_CXX_FLAGS": "-DNDEBUG -Werror -Wall -Wextra -Wpedantic -Walloca -Wcast-align -Wcast-qual -Wdeprecated-copy-dtor -Wdouble-promotion -Wduplicated-branches -Wduplicated-cond -Wenum-conversion -Wextra-semi -Wfloat-equal -Wformat-overflow=2 -Wformat-signedness -Wformat=2 -Wlogical-op -Wmismatched-tags -Wnoexcept -Wnon-virtual-dtor -Woverloaded-virtual -Wpointer-arith -Wrange-loop-construct -Wrestrict -Wshadow -Wstrict-null-sentinel -Wvla -Wvolatile -Wwrite-strings -Wold-style-cast -Wsign-promo -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization -Wstrict-overflow=2 -Wundef -Wtype-limits -Wmissing-format-attribute -Wunreachable-code -Wconversion -Warith-conversion -Wshift-overflow=2 -Wstringop-overflow=4 -Wtrampolines -Wzero-as-null-pointer-constant -O3 -flto=auto -march=native -mtune=native -fomit-frame-pointer"
             }
+        },
+	{
+	    "name": "profile",
+	    "displayName": "Release with Debug Info",
+	    "inherits": "release",
+	    "cacheVariables": {
+		"CMAKE_CXX_FLAGS": "-DNDEBUG -g -fno-omit-frame-pointer -O3 -flto=auto -march=native -mtune=native"
+	    }
         }
     ]
 }

@@ -17,7 +17,6 @@ add_subdirectory(external/jamutils)
 
  add_executable(nasdaq-moldudp64-feed-sim
   src/main.cpp
-  src/itch.cpp
   src/mold_udp_64.cpp
   src/retransmission_buffer.cpp
   src/packet_builder.cpp

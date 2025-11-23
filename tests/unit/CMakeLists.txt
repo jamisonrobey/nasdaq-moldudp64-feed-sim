@@ -13,8 +13,6 @@ add_executable(tests
     test_packet_builder.cpp
 
     ${PROJECT_SOURCE_DIR}/src/retransmission_buffer.cpp
-    ${PROJECT_SOURCE_DIR}/src/itch.cpp
-    ${PROJECT_SOURCE_DIR}/src/temporal_pacer.h
     ${PROJECT_SOURCE_DIR}/src/packet_builder.cpp
     ${PROJECT_SOURCE_DIR}/src/mold_udp_64.cpp
 )

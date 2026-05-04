@@ -1,44 +1,60 @@
-cmake_minimum_required(VERSION 3.30)
-project(nasdaq-moldudp64-feed-sim)
+cmake_minimum_required(VERSION 4.2)
+project(itch-mold-replay LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(BUILD_UNIT_TESTS "Enable testing" OFF)
+
+include(GNUInstallDirs)
 include(FetchContent)
 
-FetchContent_Declare(
-    cli11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG v2.5.0
+add_executable(${PROJECT_NAME} src/main.cpp src/itch/timestamp.cpp)
+
+set(PROJECT_WARNINGS
+    -Wall
+    -Wextra
+    -Wshadow
+    -Wnon-virtual-dtor
+    -Wold-style-cast
+    -Wcast-align
+    -Wunused
+    -Woverloaded-virtual
+    -Wpedantic
+    -Wconversion
+    -Wsign-conversion
+    -Wnull-dereference
+    -Wdouble-promotion
+    -Wformat=2
 )
-FetchContent_MakeAvailable(cli11) 
 
-add_subdirectory(external/jamutils)
-
- add_executable(nasdaq-moldudp64-feed-sim
-  src/main.cpp
-  src/mold_udp_64.cpp
-  src/retransmission_buffer.cpp
-  src/packet_builder.cpp
-  src/downstream_server.cpp
-  src/retransmission_server.cpp
-  src/retransmission_worker.cpp
-)
-
-target_link_libraries(nasdaq-moldudp64-feed-sim PRIVATE 
-                      CLI11::CLI11
-                      jamutils)
-
-if(DEBUG_NO_NETWORK)
-    target_compile_definitions(nasdaq-moldudp64-feed-sim PRIVATE DEBUG_NO_NETWORK)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND PROJECT_WARNINGS -Werror)
 endif()
 
-if(DEBUG_NO_SLEEP)
-    target_compile_definitions(nasdaq-moldudp64-feed-sim PRIVATE DEBUG_NO_SLEEP)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND PROJECT_WARNINGS
+        -Wmisleading-indentation
+        -Wduplicated-cond
+        -Wduplicated-branches
+        -Wlogical-op
+        -Wuseless-cast
+    )
 endif()
 
+target_compile_options(${PROJECT_NAME} PRIVATE ${PROJECT_WARNINGS})
 
-option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto=auto)
+        target_link_options(${PROJECT_NAME} PRIVATE -flto=auto)
+    else()
+        target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto)
+        target_link_options(${PROJECT_NAME} PRIVATE -flto)
+    endif()
+endif()
+
 if(BUILD_UNIT_TESTS)
     enable_testing()
     add_subdirectory(tests/unit)

@@ -13,7 +13,7 @@ else()
 endif()
 
 add_executable(unit-tests
-  tests/itch_test.cpp
+  tests/itch_timestamp_test.cpp
 )
 
 target_include_directories(unit-tests PRIVATE
@@ -21,7 +21,7 @@ target_include_directories(unit-tests PRIVATE
 )
 
 target_sources(unit-tests PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/itch/itch.cpp
+    ${PROJECT_SOURCE_DIR}/src/itch/timestamp.cpp
 )
 
 target_link_libraries(unit-tests PRIVATE

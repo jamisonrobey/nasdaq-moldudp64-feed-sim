@@ -1,88 +1,99 @@
 #pragma once
-
 #include <bit>
 #include <cstring>
 #include <span>
 #include <cassert>
-#include <string_view>
 
-// does no checking you must ensure size before calling
-// read/write() updates position passed in
-// _at() functions do not update the position passed in
-// _be() functions will convert to or from big endian depending on the action
+#include <ranges>
+
+// Does zero checking outside of debug asserts so you MUST make sure
+// the buffer you pass in is big enough to read/write your value
+// read/write - at a given position, advancing your position past the value when done
+// _at suffix - at an offset, with no advancing position (discarded)
+// _be versions: buffer is big endian, your value is little endian
 
 namespace util::binary_io
 {
+
+    // basic io which other functions call
+
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    T read(std::span<const char> bytes, std::size_t& pos)
+    T read(std::span<const char> buf, std::size_t& pos)
     {
-        assert(pos + sizeof(T) <= bytes.size());
+        assert(pos + sizeof(T) <= buf.size());
         T value{};
-        std::memcpy(&value, &bytes[pos], sizeof(T));
+        std::memcpy(&value, buf.data() + pos, sizeof(T));
         pos += sizeof(T);
         return value;
     }
 
     template <typename T>
-        requires std::is_trivially_copyable_v<T>
-    T read_be(std::span<const char> bytes, std::size_t& pos)
-    {
-        return std::byteswap(read<T>(bytes, pos));
-    }
+    concept ByteRange = std::ranges::contiguous_range<T> &&
+                        sizeof(std::ranges::range_value_t<T>) == 1;
 
+    // explicitly NOT byte_range here to prevent potential strange overload with the byte_range version of this
     template <typename T>
-        requires std::is_trivially_copyable_v<T>
-    T read_at(std::span<const char> bytes, std::size_t offset)
+        requires std::is_trivially_copyable_v<T> && (!ByteRange<T>)
+    void write(std::span<char> buf, std::size_t& pos, T value)
     {
-        assert(offset + sizeof(T) <= bytes.size());
-        T value{};
-        std::memcpy(&value, &bytes[offset], sizeof(T));
-        return value;
-    }
-
-    template <typename T>
-        requires std::is_trivially_copyable_v<T>
-    T read_at_be(std::span<const char> bytes, std::size_t offset)
-    {
-        return std::byteswap(read_at<T>(bytes, offset));
-    }
-
-    template <typename T>
-        requires std::is_trivially_copyable_v<T>
-    void write(std::span<char> bytes, std::size_t& pos, T value)
-    {
-        assert(pos + sizeof(T) <= bytes.size());
-        std::memcpy(&bytes[pos], &value, sizeof(T));
+        assert(pos + sizeof(T) <= buf.size());
+        std::memcpy(buf.data() + pos, &value, sizeof(T));
         pos += sizeof(T);
     }
 
-    inline void write(std::span<char> bytes, std::size_t& pos, std::string_view data)
+    void write(std::span<char> buf, std::size_t& pos, const ByteRange auto& data)
     {
-        assert(pos + data.size() <= bytes.size());
-        std::memcpy(&bytes[pos], data.data(), data.size());
-        pos += data.size();
+        assert(pos + std::ranges::size(data) <= buf.size());
+        std::memcpy(buf.data() + pos, std::ranges::data(data), std::ranges::size(data));
+        pos += std::ranges::size(data);
+    }
+
+    // _at use base functions but we don't care about the advanced position
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    T read_at(std::span<const char> buf, std::size_t offset)
+    {
+        std::size_t pos = offset;
+        return read<T>(buf, pos);
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_be(std::span<char> bytes, std::size_t& pos, T value)
+    void write_at(std::span<char> buf, std::size_t offset, T value)
     {
-        write(bytes, pos, std::byteswap(value));
+        std::size_t pos = offset;
+        write(buf, pos, value);
+    }
+
+    // _be versions byteswap before reading/writing
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    T read_be(std::span<const char> buf, std::size_t& pos)
+    {
+        return std::byteswap(read<T>(buf, pos));
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_at(std::span<char> bytes, std::size_t offset, T value)
+    void write_be(std::span<char> buf, std::size_t& pos, T value)
     {
-        assert(offset + sizeof(T) <= bytes.size());
-        std::memcpy(&bytes[offset], &value, sizeof(T));
+        write(buf, pos, std::byteswap(value));
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_at_be(std::span<char> bytes, std::size_t offset, T value)
+    T read_at_be(std::span<const char> buf, std::size_t offset)
     {
-        write_at(bytes, offset, std::byteswap(value));
+        return std::byteswap(read_at<T>(buf, offset));
+    }
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    void write_at_be(std::span<char> buf, std::size_t offset, T value)
+    {
+        write_at(buf, offset, std::byteswap(value));
     }
 }

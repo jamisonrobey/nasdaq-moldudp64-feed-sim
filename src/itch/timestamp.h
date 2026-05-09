@@ -5,5 +5,6 @@
 
 namespace itch
 {
+    [[nodiscard]]
     std::chrono::nanoseconds extract_timestamp(std::span<const char> bytes);
 };

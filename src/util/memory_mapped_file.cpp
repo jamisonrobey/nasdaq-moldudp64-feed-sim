@@ -1,24 +1,15 @@
 #include "memory_mapped_file.h"
 
-#include <fcntl.h>
 #include <system_error>
-#include <unistd.h>
 #include <utility>
 
 namespace util
 {
     MemoryMappedFile::MemoryMappedFile(const std::filesystem::path& path, int flags, off_t offset)
+        : fd_(path),
+          length_{std::filesystem::file_size(path)},
     {
-        const int fd{open(path.c_str(), O_RDONLY)};
-        if (fd < 0)
-        {
-            throw std::system_error(errno, std::system_category());
-        }
-
-        fd_ = fd;
-        length_ = std::filesystem::file_size(path);
-
-        mapped_file_ = mmap(nullptr, length_, PROT_READ, flags, fd_, offset);
+        mapped_file_ = mmap(nullptr, length_, PROT_READ, flags, fd_.get(), offset);
         if (mapped_file_ == MAP_FAILED)
         {
             throw std::system_error(errno, std::system_category());
@@ -26,7 +17,7 @@ namespace util
     }
 
     MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& other) noexcept
-        : fd_{std::exchange(other.fd_, -1)},
+        : fd_{std::move(other.fd_)},
           length_{std::exchange(other.length_, 0)},
           mapped_file_{std::exchange(other.mapped_file_, nullptr)} {}
 
@@ -35,7 +26,7 @@ namespace util
         if (this != &other)
         {
             cleanup();
-            fd_ = std::exchange(other.fd_, -1);
+            fd_ = std::move(other.fd_);
             length_ = std::exchange(other.length_, 0);
             mapped_file_ = std::exchange(other.mapped_file_, nullptr);
         }
@@ -57,10 +48,6 @@ namespace util
         if (mapped_file_ != nullptr)
         {
             munmap(mapped_file_, length_);
-        }
-        if (fd_ >= 0)
-        {
-            close(fd_);
         }
     }
 }

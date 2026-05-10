@@ -1,8 +1,8 @@
 #pragma once
 
+#include "util/file_descriptor.h"
 #include <filesystem>
 #include <sys/mman.h>
-#include <cassert>
 
 namespace util
 {
@@ -24,7 +24,7 @@ namespace util
         std::span<const char> as_span() const noexcept;
 
       private:
-        int fd_{-1};
+        FileDescriptor fd_;
         std::size_t length_{0};
         void* mapped_file_{nullptr};
 

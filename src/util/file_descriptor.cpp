@@ -16,9 +16,9 @@ namespace util
         }
     }
 
-    FileDescriptor::FileDescriptor(const std::filesystem::path& path)
+    FileDescriptor::FileDescriptor(const std::filesystem::path& path, int flags)
     {
-        const int fd{open(path.c_str(), O_RDONLY)};
+        const int fd{open(path.c_str(), flags)};
         if (fd < 0)
         {
             throw std::system_error(errno, std::system_category());
@@ -44,7 +44,7 @@ namespace util
         cleanup();
     }
 
-    int FileDescriptor::fd() const noexcept
+    int FileDescriptor::get() const noexcept
     {
         return fd_;
     }

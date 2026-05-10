@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <fcntl.h>
 
 namespace util
 {
@@ -8,7 +9,7 @@ namespace util
     {
       public:
         explicit FileDescriptor(int fd);
-        explicit FileDescriptor(const std::filesystem::path& path);
+        explicit FileDescriptor(const std::filesystem::path& path, int flags = O_RDONLY);
 
         FileDescriptor(const FileDescriptor&) = delete;
         FileDescriptor& operator=(const FileDescriptor&) = delete;
@@ -19,7 +20,7 @@ namespace util
         ~FileDescriptor();
 
         [[nodiscard]]
-        int fd() const noexcept;
+        int get() const noexcept;
 
       private:
         int fd_{-1};

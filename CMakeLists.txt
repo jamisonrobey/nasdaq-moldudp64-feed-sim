@@ -21,6 +21,7 @@ add_library(${PROJECT_NAME} STATIC
     src/mold/io.cpp
     src/mold/packet_builder.cpp
     src/mold/retransmission_buffer.cpp
+    src/util/memory_mapped_file.cpp
 )
 target_include_directories(${PROJECT_NAME}
     PUBLIC  include

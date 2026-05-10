@@ -14,6 +14,8 @@ endif()
 
 add_executable(unit-tests
   tests/itch_timestamp_test.cpp
+  tests/mold_packet_builder_test.cpp
+  tests/mold_io_read_message_test.cpp
 )
 
 target_include_directories(unit-tests PRIVATE
@@ -22,6 +24,8 @@ target_include_directories(unit-tests PRIVATE
 
 target_sources(unit-tests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/itch/timestamp.cpp
+    ${PROJECT_SOURCE_DIR}/src/mold/packet_builder.cpp
+    ${PROJECT_SOURCE_DIR}/src/mold/io.cpp
 )
 
 target_link_libraries(unit-tests PRIVATE

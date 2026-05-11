@@ -7,7 +7,7 @@ namespace util
 {
     MemoryMappedFile::MemoryMappedFile(const std::filesystem::path& path, int flags, off_t offset)
         : fd_(path),
-          length_{std::filesystem::file_size(path)},
+          length_{std::filesystem::file_size(path)}
     {
         mapped_file_ = mmap(nullptr, length_, PROT_READ, flags, fd_.get(), offset);
         if (mapped_file_ == MAP_FAILED)

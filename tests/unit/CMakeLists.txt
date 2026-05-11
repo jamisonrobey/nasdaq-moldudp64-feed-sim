@@ -17,6 +17,7 @@ add_executable(unit-tests
     tests/mold_packet_builder_test.cpp
     tests/mold_io_read_message_test.cpp
     tests/mold_retransmission_buffer_test.cpp
+    tests/mold_downstream_pacer.test.cpp
 )
 
 target_link_libraries(unit-tests PRIVATE

@@ -9,8 +9,7 @@ namespace
     using MinimumPacket = std::array<char, 11>;
 }
 
-// check byteswaps and converts 6-byte to 8-byte
-TEST(Itch, ExtractTimestamp)
+TEST(ItchTimestamp, ReturnsCorrectValue_ByteswappingFromNetworkOrder)
 {
     MinimumPacket packet{};
     packet[5] = 0x00;
@@ -25,7 +24,7 @@ TEST(Itch, ExtractTimestamp)
     EXPECT_EQ(timestamp.count(), 0x000102030405);
 }
 
-TEST(Itch, ExtractTimestampZero)
+TEST(ItchTimestamp, ReturnsZero_ForZeroedPacket)
 {
     MinimumPacket packet{};
 

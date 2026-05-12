@@ -1,20 +1,19 @@
 #include "retransmission_buffer.h"
 #include "mold/types.h"
 
-#include <format>
 #include <stdexcept>
 
 namespace mold
 {
-    RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)
-        : mask_{buffer_size - 1}
-    {
-        if ((buffer_size & mask_) != 0 || buffer_size == 0)
-        {
-            throw std::invalid_argument(std::format("mold::RetransmissionBuffer: buffer_size must be a power of 2 (given  {})",
-                                                    buffer_size));
-        }
 
+    RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)
+        : mask_{buffer_size - 1},
+          use_mask_{buffer_size != 0 && (buffer_size & mask_) == 0}
+    {
+        if (buffer_size == 0)
+        {
+            throw std::invalid_argument("mold::RetransmissionBuffer: buffer_size must be > 0");
+        }
         buffer_.resize(buffer_size);
     }
 
@@ -41,7 +40,7 @@ namespace mold
 
         const auto& entry{buffer_[index_for(sequence_number)]};
 
-        // check if slot has been overwritten / lapped
+        // check if writer lapped us between checking overwritten above and this read
         if (entry.sequence_number != sequence_number)
         {
             return std::nullopt;
@@ -52,7 +51,8 @@ namespace mold
 
     std::size_t RetransmissionBuffer::index_for(SequenceNumber sequence_number) const noexcept
     {
-        return sequence_number & mask_;
+        return use_mask_ ? sequence_number & mask_
+                         : sequence_number % buffer_.size();
     }
 
     std::size_t RetransmissionBuffer::size() const noexcept

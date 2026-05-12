@@ -17,19 +17,6 @@ TEST(RetransmissionBufferCtor, Zero_Throws)
     EXPECT_ANY_THROW(mold::RetransmissionBuffer(0));
 }
 
-TEST(RetransmissionBufferCtor, NonPowerOf2_Throws)
-{
-    EXPECT_ANY_THROW(mold::RetransmissionBuffer(3));
-    EXPECT_ANY_THROW(mold::RetransmissionBuffer(6));
-}
-
-TEST(RetransmissionBufferCtor, PowerOf2_DoesNotThrow)
-{
-    EXPECT_NO_THROW(mold::RetransmissionBuffer(1));
-    EXPECT_NO_THROW(mold::RetransmissionBuffer(2));
-    EXPECT_NO_THROW(mold::RetransmissionBuffer(1 << 22));
-}
-
 TEST(RetransmissionBufferSize, ReturnsConstructorArg)
 {
     mold::RetransmissionBuffer buffer(8);

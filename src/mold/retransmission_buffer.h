@@ -9,7 +9,6 @@
 
 namespace mold
 {
-
     // circular array, sequence number as index
     // single writer (downstream), N readers (retransmission), acquire/release on write_seq_ guards buffer visibility across threads
     class RetransmissionBuffer
@@ -21,11 +20,9 @@ namespace mold
             std::size_t file_position;
         };
 
-        // throws if buffer_size is not a power of 2, vector size not known at compile time so wont optimize
-        // with bitmask for index lookup, enforcing pow of 2 lets us do it manually and can still have buffer size as a runtime argument
+        // pow2 buffer_size uses bitmasking for index lookup (prefer this for performance), non-pow2 falls back to division
         explicit RetransmissionBuffer(std::size_t buffer_size);
 
-        // only ever called with inplace construction (downstream)
         void push(MessageRecord&& message_record) noexcept;
 
         [[nodiscard]]
@@ -37,6 +34,7 @@ namespace mold
       private:
         std::vector<MessageRecord> buffer_;
         std::size_t mask_;
+        bool use_mask_;
         alignas(64) std::atomic<SequenceNumber> write_seq_{0};
 
         [[nodiscard]]

@@ -14,8 +14,8 @@ namespace
 namespace mold
 {
 
-    PacketBuilder::PacketBuilder(std::string_view session, std::size_t MTU)
-        : MTU_{MTU},
+    PacketBuilder::PacketBuilder(const Config& cfg)
+        : MTU_{cfg.MTU},
           buffer_(MTU_)
     {
         if (MTU_ < header_length)
@@ -23,12 +23,12 @@ namespace mold
             throw std::runtime_error("PacketBuilder: MTU was must be at least {} bytes");
         }
 
-        if (session.size() != session_str_size)
+        if (cfg.session.size() != session_str_size)
         {
             throw std::runtime_error("PacketBuilder: A MoldUDP64 session must be exactly 10 characters");
         }
 
-        util::binary_io::write(buffer_, write_pos_, session);
+        util::binary_io::write(buffer_, write_pos_, cfg.session);
 
         reset(0);
     }

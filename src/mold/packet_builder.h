@@ -8,13 +8,15 @@
 
 namespace mold
 {
-    // 1500 byte ethernet MTU minus IP (20) and UDP (8) headers
-    static constexpr auto default_MTU{1472UZ};
-
     class PacketBuilder
     {
       public:
-        PacketBuilder(std::string_view session, std::size_t MTU = default_MTU);
+        struct Config
+        {
+            std::string_view session;
+            std::size_t MTU{1472};
+        };
+        PacketBuilder(const Config& cfg);
 
         [[nodiscard]]
         bool try_add(std::span<const char> message);

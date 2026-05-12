@@ -23,27 +23,35 @@ using namespace mold::downstream;
 
 TEST(MoldDownstreamPacer, ReturnsNullopt_ForPacketBeforeIgnoreThreshold)
 {
-    constexpr auto delay{100};
-    Pacer<MockClock> pacer(1.0, ns(delay), MockClock::time_point{ns{1000}});
+    constexpr auto phase{MarketPhase::open};
+    const auto delay{Pacer<MockClock>::phase_timestamp(phase)};
+    Pacer<MockClock> pacer({
+        .ignore_packets_before_phase = phase,
+    });
 
-    EXPECT_FALSE(pacer.get_delay(ns(delay - 1)).has_value());
+    EXPECT_FALSE(pacer.get_delay(delay - ns(1)).has_value());
 }
 
 TEST(MoldDownstreamPacer, ProcessesPacket_AtExactIgnoreThreshold)
 {
-    constexpr auto delay{100};
-    Pacer<MockClock> pacer(1.0, ns(delay), MockClock::time_point{ns{1000}});
+    constexpr auto phase{MarketPhase::open};
+    const auto delay{Pacer<MockClock>::phase_timestamp(phase)};
+    Pacer<MockClock> pacer({
+        .ignore_packets_before_phase = phase,
+    });
 
-    EXPECT_TRUE(pacer.get_delay(ns(delay)).has_value());
+    EXPECT_TRUE(pacer.get_delay(delay).has_value());
 }
 
 TEST(MoldDownstreamPacer, ReturnsZeroDelay_ForFirstValidPacket)
 {
-    constexpr auto ignore_threshold{100};
-    constexpr auto start_time{1000};
-    Pacer<MockClock> pacer{1.0, ns(ignore_threshold), MockClock::time_point{ns{start_time}}};
+    constexpr auto phase{MarketPhase::open};
+    const auto ignore_threshold{Pacer<MockClock>::phase_timestamp(phase)};
+    Pacer<MockClock> pacer({
+        .ignore_packets_before_phase = phase,
+    });
 
-    const auto result{pacer.get_delay(ns{ignore_threshold})};
+    const auto result{pacer.get_delay(ignore_threshold)};
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(*result, ns(0));
@@ -55,8 +63,10 @@ TEST(MoldDownstreamPacer, ReturnsZeroDelay_WhenScheduledTimeHasPassed)
     constexpr auto second_packet_time{500};
     constexpr auto current_time{600};
     MockClock::current_time = MockClock::time_point{ns{current_time}};
-    Pacer<MockClock> pacer{1.0, ns(0), MockClock::time_point{ns(0)}};
-    pacer.get_delay(ns(first_packet_time));
+    Pacer<MockClock> pacer({
+        .playback_wall_start = MockClock::time_point{ns{0}},
+    });
+    ASSERT_TRUE(pacer.get_delay(ns(first_packet_time)).has_value());
 
     const auto result{pacer.get_delay(ns(second_packet_time))};
 
@@ -70,8 +80,10 @@ TEST(MoldDownstreamPacer, ReturnsZeroDelay_WhenScheduledTimeIsExactlyNow)
     constexpr auto second_packet_time{500};
     constexpr auto current_time{second_packet_time};
     MockClock::current_time = MockClock::time_point{ns{current_time}};
-    Pacer<MockClock> pacer(1.0, ns(0), MockClock::time_point(ns(0)));
-    pacer.get_delay(ns(first_packet_time));
+    Pacer<MockClock> pacer({
+        .playback_wall_start = MockClock::time_point{ns{0}},
+    });
+    ASSERT_TRUE(pacer.get_delay(ns(first_packet_time)).has_value());
 
     const auto result{pacer.get_delay(ns(second_packet_time))};
 
@@ -87,8 +99,11 @@ TEST(MoldDownstreamPacer, ReturnsPositiveDelay_WhenScheduledTimeIsInFuture)
     constexpr auto current_time{200};
     constexpr auto expected_delay{second_packet_time - current_time};
     MockClock::current_time = MockClock::time_point{ns{current_time}};
-    Pacer<MockClock> pacer(speed, ns(0), MockClock::time_point(ns(0)));
-    pacer.get_delay(ns(first_packet_time));
+    Pacer<MockClock> pacer({
+        .playback_speed = speed,
+        .playback_wall_start = MockClock::time_point{ns{0}},
+    });
+    ASSERT_TRUE(pacer.get_delay(ns(first_packet_time)).has_value());
 
     const auto result{pacer.get_delay(ns(second_packet_time))};
 
@@ -104,8 +119,11 @@ TEST(MoldDownstreamPacer, HalfPlaybackSpeed_DoublesDelay)
     constexpr auto current_time{200};
     constexpr auto expected_delay{static_cast<int>(second_packet_time / speed) - current_time};
     MockClock::current_time = MockClock::time_point{ns{current_time}};
-    Pacer<MockClock> pacer(speed, ns(0), MockClock::time_point(ns(0)));
-    pacer.get_delay(ns(first_packet_time));
+    Pacer<MockClock> pacer({
+        .playback_speed = speed,
+        .playback_wall_start = MockClock::time_point{ns{0}},
+    });
+    ASSERT_TRUE(pacer.get_delay(ns(first_packet_time)).has_value());
 
     const auto result{pacer.get_delay(ns(second_packet_time))};
 
@@ -121,8 +139,11 @@ TEST(MoldDownstreamPacer, DoublePlaybackSpeed_HalvesDelay)
     constexpr auto current_time{200};
     constexpr auto expected_delay{static_cast<int>(second_packet_time / speed) - current_time};
     MockClock::current_time = MockClock::time_point{ns{current_time}};
-    Pacer<MockClock> pacer(speed, ns(0), MockClock::time_point(ns(0)));
-    pacer.get_delay(ns(first_packet_time));
+    Pacer<MockClock> pacer({
+        .playback_speed = speed,
+        .playback_wall_start = MockClock::time_point{ns{0}},
+    });
+    ASSERT_TRUE(pacer.get_delay(ns(first_packet_time)).has_value());
 
     const auto result{pacer.get_delay(ns(second_packet_time))};
 

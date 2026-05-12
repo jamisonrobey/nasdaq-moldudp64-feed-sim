@@ -4,21 +4,37 @@
 
 namespace mold::downstream
 {
+    enum class MarketPhase
+    {
+        pre,
+        close,
+        open
+    };
+
     template <typename T>
     concept ClockConcept = requires {
         typename T::time_point;
         { T::now() } -> std::same_as<typename T::time_point>;
     };
 
-    template <ClockConcept Clock = std::chrono::high_resolution_clock>
+    template <ClockConcept Clock = std::chrono::steady_clock>
     class Pacer
     {
       public:
-        Pacer(double playback_speed, std::chrono::nanoseconds ignore_packets_before, Clock::time_point replay_wall_start)
-            : playback_speed_{playback_speed},
-              ignore_packets_before_{ignore_packets_before},
-              replay_wall_start_{replay_wall_start} {}
+        struct Config
+        {
+            double playback_speed{1.0};
+            // MarketPhase::pre means no packets ignored
+            MarketPhase ignore_packets_before_phase{MarketPhase::pre};
+            Clock::time_point playback_wall_start{Clock::now()};
+        };
 
+        Pacer(const Config& cfg)
+            : playback_speed_{cfg.playback_speed},
+              ignore_packets_before_{phase_timestamp(cfg.ignore_packets_before_phase)},
+              replay_wall_start_{cfg.playback_wall_start} {}
+
+        [[nodiscard]]
         std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
         {
             if (packet_timestamp < ignore_packets_before_)
@@ -45,6 +61,22 @@ namespace mold::downstream
             }
 
             return std::chrono::duration_cast<std::chrono::nanoseconds>(scheduled_dispatch_time - now);
+        }
+
+        static constexpr std::chrono::nanoseconds phase_timestamp(MarketPhase phase)
+        {
+            using namespace std::chrono_literals;
+            switch (phase)
+            {
+            case MarketPhase::pre:
+                return 0ns;
+            case MarketPhase::open:
+                return 9h + 30min;
+            case MarketPhase::close:
+                return 16h;
+            default:
+                return 0ns;
+            }
         }
 
       private:

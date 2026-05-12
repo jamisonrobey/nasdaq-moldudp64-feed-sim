@@ -26,7 +26,7 @@ TEST(MoldIoReadMessage, ValidMessage_ReturnsFullSpanAndAdvancesPos)
     const auto block{make_msg_block(msg)};
     std::size_t pos{0};
 
-    const auto res{mold::read_message(std::span<const char>(block), pos)};
+    const auto res{mold::io::read_message(std::span<const char>(block), pos)};
 
     EXPECT_EQ(res.size(), sizeof(mold::LengthPrefix) + msg.size());
     EXPECT_EQ(pos, sizeof(mold::LengthPrefix) + msg.size());
@@ -38,7 +38,7 @@ TEST(MoldIoReadMessage, TruncatedLengthPrefix_ReturnsEmptyPosUnchanged)
     constexpr auto bytes{std::to_array<char>({0x00})};
     std::size_t pos{0};
 
-    const auto res{mold::read_message(std::span(bytes), pos)};
+    const auto res{mold::io::read_message(std::span(bytes), pos)};
 
     EXPECT_TRUE(res.empty());
     EXPECT_EQ(pos, 0);
@@ -52,7 +52,7 @@ TEST(MoldIoReadMessage, TruncatedBody_ReturnsEmptyPosUnchanged)
 
     // truncate block so length prefix claims more bytes than it actually contains
     const auto truncated{std::span(block).subspan(0, sizeof(mold::LengthPrefix) + 2)};
-    const auto res{mold::read_message(truncated, pos)};
+    const auto res{mold::io::read_message(truncated, pos)};
 
     EXPECT_TRUE(res.empty());
     EXPECT_EQ(pos, 0);

@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "mold/packet_builder.h"
+#include "imr/mold/packet_builder.h"
+
+using namespace imr;
 
 namespace
 {

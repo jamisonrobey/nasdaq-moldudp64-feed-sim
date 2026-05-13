@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
 
 #include "mold/io.h"
-#include "mold/types.h"
+#include "imr/mold/types.h"
 #include "util/binary_io.h"
 
 #include <array>
+
+using namespace imr;
 
 namespace
 {

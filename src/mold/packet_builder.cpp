@@ -1,4 +1,4 @@
-#include "packet_builder.h"
+#include "imr/mold/packet_builder.h"
 
 #include "../util/binary_io.h"
 
@@ -8,10 +8,10 @@
 namespace
 {
     constexpr auto session_str_size{10UZ};
-    constexpr auto msg_count_offset{session_str_size + sizeof(mold::SequenceNumber)};
+    constexpr auto msg_count_offset{session_str_size + sizeof(imr::mold::SequenceNumber)};
 }
 
-namespace mold
+namespace imr::mold
 {
 
     PacketBuilder::PacketBuilder(const Config& cfg)

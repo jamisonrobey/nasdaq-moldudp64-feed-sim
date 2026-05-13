@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
-#include "mold/retransmission_buffer.h"
+#include "imr/mold/retransmission_buffer.h"
+
+using namespace imr;
 
 namespace
 {

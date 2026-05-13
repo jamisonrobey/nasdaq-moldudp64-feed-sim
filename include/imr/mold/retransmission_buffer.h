@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../mold/types.h"
+#include "imr/mold/types.h"
 
 #include <vector>
 #include <atomic>
 #include <cstddef>
 #include <optional>
 
-namespace mold
+namespace imr::mold
 {
     // circular array, sequence number as index
     // single writer (downstream), N readers (retransmission), acquire/release on write_seq_ guards buffer visibility across threads

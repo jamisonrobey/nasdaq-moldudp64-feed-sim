@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <array>
 
-namespace mold
+namespace imr::mold
 {
     using Session = std::array<char, 10>;
     using SequenceNumber = std::uint64_t;

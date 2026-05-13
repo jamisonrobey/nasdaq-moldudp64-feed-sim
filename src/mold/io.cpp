@@ -2,9 +2,9 @@
 
 #include "../util/binary_io.h"
 
-#include "types.h"
+#include "imr/mold/types.h"
 
-namespace mold::io
+namespace imr::mold::io
 {
     std::span<const char> read_message(std::span<const char> bytes, std::size_t& pos)
     {

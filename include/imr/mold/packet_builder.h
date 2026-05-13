@@ -1,12 +1,12 @@
 #pragma once
 
-#include "mold/types.h"
+#include "imr/mold/types.h"
 
 #include <string_view>
 #include <span>
 #include <vector>
 
-namespace mold
+namespace imr::mold
 {
     class PacketBuilder
     {

@@ -1,9 +1,8 @@
-#include "retransmission_buffer.h"
-#include "mold/types.h"
+#include "imr/mold/retransmission_buffer.h"
 
 #include <stdexcept>
 
-namespace mold
+namespace imr::mold
 {
 
     RetransmissionBuffer::RetransmissionBuffer(std::size_t buffer_size)

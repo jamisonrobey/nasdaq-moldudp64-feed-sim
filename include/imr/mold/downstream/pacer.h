@@ -1,8 +1,9 @@
 #pragma once
+
 #include <chrono>
 #include <concepts>
 
-namespace mold::downstream
+namespace imr::mold::downstream
 {
     enum class MarketPhase
     {
@@ -50,7 +51,11 @@ namespace mold::downstream
             }
 
             const auto message_time_offset{packet_timestamp - *first_packet_timestamp_};
-            const auto wall_time_offset{std::chrono::nanoseconds(static_cast<int64_t>(message_time_offset.count() / playback_speed_))};
+
+            const auto wall_time_offset{
+                std::chrono::nanoseconds(
+                    static_cast<int64_t>(static_cast<double>(message_time_offset.count()) / playback_speed_)),
+            };
 
             const auto scheduled_dispatch_time{replay_wall_start_ + wall_time_offset};
             const auto now{Clock::now()};

@@ -1,7 +1,7 @@
 #include <chrono>
 #include <gtest/gtest.h>
 
-#include "mold/downstream/pacer.h"
+#include "imr/mold/downstream/pacer.h"
 
 namespace
 {
@@ -19,7 +19,7 @@ namespace
 
 using namespace std::chrono_literals;
 using ns = std::chrono::nanoseconds;
-using namespace mold::downstream;
+using namespace imr::mold::downstream;
 
 TEST(MoldDownstreamPacer, ReturnsNullopt_ForPacketBeforeIgnoreThreshold)
 {

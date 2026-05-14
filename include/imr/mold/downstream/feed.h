@@ -31,9 +31,9 @@ namespace imr::mold::downstream
         // run until EOF
         void start();
         // stop early
-        void stop();
+        void stop() noexcept;
         // reset sequence_number and file position
-        void reset(std::span<const char> new_file = {});
+        void reset(std::span<const char> new_file = {}) noexcept;
 
       private:
         util::FileDescriptor socket_;
@@ -51,6 +51,6 @@ namespace imr::mold::downstream
         std::chrono::nanoseconds fill_packet();
         void flush_packet(std::chrono::nanoseconds first_msg_timestamp);
         void handle_delay(std::chrono::nanoseconds first_msg_timestamp);
-        void send(std::span<const char> msg);
+        void send(std::span<const char> msg) const noexcept;
     };
 }

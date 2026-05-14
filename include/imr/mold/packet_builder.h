@@ -17,7 +17,7 @@ namespace imr::mold
             std::size_t MTU{1472};
             std::uint64_t start_sequence{1};
         };
-        PacketBuilder(const Config& cfg);
+        explicit PacketBuilder(const Config& cfg);
 
         [[nodiscard]]
         bool try_add(std::span<const char> message) noexcept;

@@ -12,14 +12,14 @@
 // _at suffix - at an offset, with no advancing position (discarded)
 // _be versions: buffer is big endian, your value is little endian
 
-namespace util::binary_io
+namespace imr::util::binary_io
 {
 
     // basic io which other functions call
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    T read(std::span<const char> buf, std::size_t& pos)
+    T read(std::span<const char> buf, std::size_t& pos) noexcept
     {
         assert(pos + sizeof(T) <= buf.size());
         T value{};
@@ -35,14 +35,14 @@ namespace util::binary_io
     // explicitly NOT byte_range here to prevent potential strange overload with the byte_range version of this
     template <typename T>
         requires std::is_trivially_copyable_v<T> && (!ByteRange<T>)
-    void write(std::span<char> buf, std::size_t& pos, T value)
+    void write(std::span<char> buf, std::size_t& pos, T value) noexcept
     {
         assert(pos + sizeof(T) <= buf.size());
         std::memcpy(buf.data() + pos, &value, sizeof(T));
         pos += sizeof(T);
     }
 
-    void write(std::span<char> buf, std::size_t& pos, const ByteRange auto& data)
+    void write(std::span<char> buf, std::size_t& pos, const ByteRange auto& data) noexcept
     {
         assert(pos + std::ranges::size(data) <= buf.size());
         std::memcpy(buf.data() + pos, std::ranges::data(data), std::ranges::size(data));
@@ -53,7 +53,7 @@ namespace util::binary_io
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    T read_at(std::span<const char> buf, std::size_t offset)
+    T read_at(std::span<const char> buf, std::size_t offset) noexcept
     {
         std::size_t pos = offset;
         return read<T>(buf, pos);
@@ -61,7 +61,7 @@ namespace util::binary_io
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_at(std::span<char> buf, std::size_t offset, T value)
+    void write_at(std::span<char> buf, std::size_t offset, T value) noexcept
     {
         std::size_t pos = offset;
         write(buf, pos, value);
@@ -71,28 +71,28 @@ namespace util::binary_io
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    T read_be(std::span<const char> buf, std::size_t& pos)
+    T read_be(std::span<const char> buf, std::size_t& pos) noexcept
     {
         return std::byteswap(read<T>(buf, pos));
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_be(std::span<char> buf, std::size_t& pos, T value)
+    void write_be(std::span<char> buf, std::size_t& pos, T value) noexcept
     {
         write(buf, pos, std::byteswap(value));
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    T read_at_be(std::span<const char> buf, std::size_t offset)
+    T read_at_be(std::span<const char> buf, std::size_t offset) noexcept
     {
         return std::byteswap(read_at<T>(buf, offset));
     }
 
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    void write_at_be(std::span<char> buf, std::size_t offset, T value)
+    void write_at_be(std::span<char> buf, std::size_t offset, T value) noexcept
     {
         write_at(buf, offset, std::byteswap(value));
     }

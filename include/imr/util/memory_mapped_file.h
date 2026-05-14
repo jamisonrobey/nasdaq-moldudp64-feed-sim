@@ -1,8 +1,7 @@
 #pragma once
 
-#include "itchreplay/util/file_descriptor.h"
+#include "imr/util/file_descriptor.h"
 
-#include <filesystem>
 #include <sys/mman.h>
 
 namespace imr::util
@@ -10,7 +9,14 @@ namespace imr::util
     class MemoryMappedFile
     {
       public:
-        explicit MemoryMappedFile(const std::filesystem::path& path, int flags = MAP_PRIVATE, off_t offset = 0);
+        struct Config
+        {
+            std::filesystem::path path;
+            int mmap_flags{MAP_PRIVATE};
+            off_t offset{0};
+        };
+
+        explicit MemoryMappedFile(const Config& cfg);
 
         MemoryMappedFile(const MemoryMappedFile&) = delete;
         MemoryMappedFile& operator=(const MemoryMappedFile&) = delete;

@@ -15,15 +15,20 @@ namespace imr::mold
         {
             std::string_view session;
             std::size_t MTU{1472};
+            std::uint64_t start_sequence{1};
         };
         PacketBuilder(const Config& cfg);
 
         [[nodiscard]]
-        bool try_add(std::span<const char> message);
+        bool try_add(std::span<const char> message) noexcept;
 
-        std::span<const char> finalize();
+        std::span<const char> finalize() noexcept;
 
-        void reset(mold::SequenceNumber sequence_number);
+        // reset msg_count and optional new sequence number
+        void reset(SequenceNumber sequence_number = 1) noexcept;
+
+        void set_message_count(MessageCount msg_count) noexcept;
+        void set_sequence_number(SequenceNumber sequence_number) noexcept;
 
         [[nodiscard]]
         mold::MessageCount message_count() const noexcept;

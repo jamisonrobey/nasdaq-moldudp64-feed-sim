@@ -8,6 +8,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_UNIT_TESTS "Enable testing" OFF)
 option(ENABLE_ASAN "Enable ASan + UBSan" OFF)
 option(ENABLE_TSAN "Enable TSan" OFF)
+# no sendto / recvfrom
+option(DEBUG_NO_NETWORK "Disable network calls for debugging" OFF)
+# no sleep_for calls on downstream
+option(DEBUG_NO_SLEEP   "Disable sleep calls for debugging"   OFF)
 
 if(ENABLE_ASAN AND ENABLE_TSAN)
     message(FATAL_ERROR "ASAN and TSAN are mutually exclusive")
@@ -23,11 +27,19 @@ add_library(${PROJECT_NAME} STATIC
     src/mold/retransmission_buffer.cpp
     src/util/memory_mapped_file.cpp
     src/util/file_descriptor.cpp
+    src/mold/downstream/feed.cpp
 )
 target_include_directories(${PROJECT_NAME}
     PUBLIC  include
     PRIVATE src
 )
+
+if(DEBUG_NO_NETWORK)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
+endif()
+if(DEBUG_NO_SLEEP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
+endif()
 
 set(PROJECT_WARNINGS
     -Wall

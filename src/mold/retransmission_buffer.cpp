@@ -1,5 +1,7 @@
 #include "imr/mold/retransmission_buffer.h"
 
+#include <print>
+#include <source_location>
 #include <stdexcept>
 
 namespace imr::mold
@@ -13,6 +15,14 @@ namespace imr::mold
         {
             throw std::invalid_argument("mold::RetransmissionBuffer: buffer_size must be > 0");
         }
+
+        if (!use_mask_)
+        {
+            std::println("{}: non power-of-two buffer_size ({}) will reduce retransmission buffer performance",
+                         std::source_location::current().function_name(),
+                         buffer_size);
+        }
+
         buffer_.resize(buffer_size);
     }
 

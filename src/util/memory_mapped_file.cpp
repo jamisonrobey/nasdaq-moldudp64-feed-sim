@@ -1,15 +1,16 @@
-#include "memory_mapped_file.h"
+#include "imr/util/memory_mapped_file.h"
 
 #include <system_error>
 #include <utility>
 
-namespace util
+namespace imr::util
 {
-    MemoryMappedFile::MemoryMappedFile(const std::filesystem::path& path, int flags, off_t offset)
-        : fd_(path),
-          length_{std::filesystem::file_size(path)}
+    MemoryMappedFile::MemoryMappedFile(const Config& cfg)
+        : fd_(cfg.path),
+          length_{std::filesystem::file_size(cfg.path)}
     {
-        mapped_file_ = mmap(nullptr, length_, PROT_READ, flags, fd_.get(), offset);
+        // we only read file ever so PROT_READ is hardcoded...
+        mapped_file_ = mmap(nullptr, length_, PROT_READ, cfg.mmap_flags, fd_.get(), cfg.offset);
         if (mapped_file_ == MAP_FAILED)
         {
             throw std::system_error(errno, std::system_category());

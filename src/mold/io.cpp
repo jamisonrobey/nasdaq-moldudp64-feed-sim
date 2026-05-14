@@ -6,7 +6,7 @@
 
 namespace imr::mold::io
 {
-    std::span<const char> read_message(std::span<const char> bytes, std::size_t& pos)
+    std::span<const char> read_message(std::span<const char> bytes, std::size_t& pos) noexcept
     {
         if (pos + sizeof(LengthPrefix) > bytes.size())
         {
@@ -23,6 +23,10 @@ namespace imr::mold::io
         }
 
         pos += length_prefix;
+
+        // not required to be noexcept by the standard, but is in gcc/clang (supported compilers)
+        static_assert(noexcept(std::span<const char>{}.subspan(0uz, 0uz)),
+                      ".subspan() must be implemented as noexcept");
         return bytes.subspan(start, sizeof(LengthPrefix) + length_prefix);
     }
 }

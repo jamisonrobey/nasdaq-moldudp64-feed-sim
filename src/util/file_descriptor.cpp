@@ -1,11 +1,11 @@
-#include "file_descriptor.h"
+#include "imr/util/file_descriptor.h"
 
 #include <fcntl.h>
 #include <stdexcept>
 #include <utility>
 #include <unistd.h>
 
-namespace util
+namespace imr::util
 {
     FileDescriptor::FileDescriptor(int fd)
         : fd_{fd}

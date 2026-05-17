@@ -36,13 +36,3 @@ jobs:
           - { no_network: ON,  no_sleep: ON  }
     steps:
       - uses: actions/checkout@v4
-  # cache system packages
-      - uses: actions/cache@v4
-        with:
-          path: /var/cache/apt
-          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
-      - run: apt-get update && apt-get install -y cmake gcc g++ git ninja-build
-      - name: Configure
-        run: cmake --preset debug-gcc -DBUILD_UNIT_TESTS=ON -DDEBUG_NO_NETWORK=${{ matrix.flags.no_network }} -DDEBUG_NO_SLEEP=${{ matrix.flags.no_sleep }}
-      - name: Build only
-        run: cmake --build --preset debug-gcc

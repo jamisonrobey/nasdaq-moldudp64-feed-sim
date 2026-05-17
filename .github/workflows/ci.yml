@@ -1,7 +1,5 @@
 name: CI
-
 on: [push, pull_request]
-
 jobs:
   build-matrix:
     runs-on: ubuntu-latest
@@ -12,11 +10,19 @@ jobs:
         preset: [debug-gcc, release-gcc, debug-clang, release-clang, asan-gcc, asan-clang, tsan-gcc, tsan-clang]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
       - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: gtest-v1.17.0
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON
       - name: Build
-        run: cmake --build --preset ${{ matrix.preset }} 
+        run: cmake --build --preset ${{ matrix.preset }}
       - name: Test
         run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure
 
@@ -34,8 +40,16 @@ jobs:
           - { no_network: ON,  no_sleep: ON  }
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
       - run: apt-get update && apt-get install -y cmake gcc g++ git ninja-build
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: gtest-v1.17.0
       - name: Configure
         run: cmake --preset debug-gcc -DBUILD_UNIT_TESTS=ON -DDEBUG_NO_NETWORK=${{ matrix.flags.no_network }} -DDEBUG_NO_SLEEP=${{ matrix.flags.no_sleep }}
       - name: Build only
-        run: cmake --build --preset debug-gcc 
+        run: cmake --build --preset debug-gcc

@@ -5,7 +5,7 @@ using namespace imr;
 
 namespace
 {
-    void push(mold::RetransmissionBuffer& buf, mold::SequenceNumber seq, std::size_t pos)
+    void push(mold::RetransmissionBuffer& buf, imr::mold::types::header::SequenceNumber seq, std::size_t pos)
     {
         buf.push(mold::RetransmissionBuffer::MessageRecord{
             .sequence_number = seq,
@@ -68,13 +68,13 @@ TEST(RetransmissionBufferFilePositionFor, LiveWindowAfterWrap_ReturnsCorrectPosi
 {
     // buffer holds 4 entries; push 6 so it wraps — seq 1,2 evicted, seq 3..6 live
     mold::RetransmissionBuffer buffer(4);
-    for (mold::SequenceNumber s = 1; s <= 6; ++s)
+    for (imr::mold::types::header::SequenceNumber s = 1; s <= 6; ++s)
         push(buffer, s, s * 10);
 
     EXPECT_EQ(buffer.file_position_for(1), std::nullopt);
     EXPECT_EQ(buffer.file_position_for(2), std::nullopt);
 
-    for (mold::SequenceNumber s = 3; s <= 6; ++s)
+    for (imr::mold::types::header::SequenceNumber s = 3; s <= 6; ++s)
     {
         const auto result{buffer.file_position_for(s)};
         ASSERT_TRUE(result.has_value()) << "expected live entry for seq=" << s;

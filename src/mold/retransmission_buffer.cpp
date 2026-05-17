@@ -18,9 +18,11 @@ namespace imr::mold
 
         if (!use_mask_)
         {
+#ifndef NDEBUG
             std::println("{}: non power-of-two buffer_size ({}) will reduce retransmission buffer performance",
                          std::source_location::current().function_name(),
                          buffer_size);
+#endif
         }
 
         buffer_.resize(buffer_size);
@@ -33,7 +35,7 @@ namespace imr::mold
         write_seq_.store(message_record.sequence_number, std::memory_order_release);
     }
 
-    std::optional<SequenceNumber> RetransmissionBuffer::file_position_for(SequenceNumber sequence_number)
+    std::optional<types::header::SequenceNumber> RetransmissionBuffer::file_position_for(types::header::SequenceNumber sequence_number)
         const noexcept
     {
         const auto current_sequence_number{write_seq_.load(std::memory_order_acquire)};
@@ -58,7 +60,7 @@ namespace imr::mold
         return entry.file_position;
     }
 
-    std::size_t RetransmissionBuffer::index_for(SequenceNumber sequence_number) const noexcept
+    std::size_t RetransmissionBuffer::index_for(types::header::SequenceNumber sequence_number) const noexcept
     {
         return use_mask_ ? sequence_number & mask_
                          : sequence_number % buffer_.size();

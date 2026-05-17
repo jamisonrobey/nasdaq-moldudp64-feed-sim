@@ -1,47 +1,40 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.25)
+
 project(itch-mold-replay LANGUAGES CXX)
+
+include(CheckIPOSupported)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(BUILD_UNIT_TESTS "Enable testing" OFF)
-option(ENABLE_ASAN "Enable ASan + UBSan" OFF)
-option(ENABLE_TSAN "Enable TSan" OFF)
-# no sendto / recvfrom
+option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 option(DEBUG_NO_NETWORK "Disable network calls for debugging" OFF)
-# no sleep_for calls on downstream
-option(DEBUG_NO_SLEEP   "Disable sleep calls for debugging"   OFF)
+option(DEBUG_NO_SLEEP "Disable sleep calls for debugging" OFF)
 
 if(ENABLE_ASAN AND ENABLE_TSAN)
     message(FATAL_ERROR "ASAN and TSAN are mutually exclusive")
 endif()
-
-include(GNUInstallDirs)
-include(FetchContent)
 
 add_library(${PROJECT_NAME} STATIC
     src/itch/timestamp.cpp
     src/mold/io.cpp
     src/mold/packet_builder.cpp
     src/mold/retransmission_buffer.cpp
+    src/mold/downstream/feed.cpp
     src/util/memory_mapped_file.cpp
     src/util/file_descriptor.cpp
-    src/mold/downstream/feed.cpp
 )
+
 target_include_directories(${PROJECT_NAME}
-    PUBLIC  include
+    PUBLIC include
     PRIVATE src
 )
 
-if(DEBUG_NO_NETWORK)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
-endif()
-if(DEBUG_NO_SLEEP)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
-endif()
-
-set(PROJECT_WARNINGS
+target_compile_options(${PROJECT_NAME} PRIVATE
+    -Werror
     -Wall
     -Wextra
     -Wshadow
@@ -58,11 +51,8 @@ set(PROJECT_WARNINGS
     -Wformat=2
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    list(APPEND PROJECT_WARNINGS -Werror)
-endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    list(APPEND PROJECT_WARNINGS
+    target_compile_options(${PROJECT_NAME} PRIVATE
         -Wmisleading-indentation
         -Wduplicated-cond
         -Wduplicated-branches
@@ -71,23 +61,49 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${PROJECT_WARNINGS})
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto=auto)
-        target_link_options(${PROJECT_NAME} PRIVATE -flto=auto)
-    else()
-        target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto)
-        target_link_options(${PROJECT_NAME} PRIVATE -flto)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -O3
+        -march=native
+    )
+
+    check_ipo_supported(RESULT ipo_supported)
+
+    if(ipo_supported)
+        set_property(TARGET ${PROJECT_NAME}
+            PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE
+        )
     endif()
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_link_options(-fuse-ld=lld)
+endif()
+
 if(ENABLE_ASAN)
-    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address,undefined)
-    target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=address,undefined)
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        -fsanitize=address,undefined
+    )
+
+    target_link_options(${PROJECT_NAME} PUBLIC
+        -fsanitize=address,undefined
+    )
 elseif(ENABLE_TSAN)
-    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
-    target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        -fsanitize=thread
+    )
+
+    target_link_options(${PROJECT_NAME} PUBLIC
+        -fsanitize=thread
+    )
+endif()
+
+if(DEBUG_NO_NETWORK)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
+endif()
+
+if(DEBUG_NO_SLEEP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
 endif()
 
 if(BUILD_UNIT_TESTS)

@@ -1,0 +1,41 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    container: ubuntu:25.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [debug-gcc, release-gcc, debug-clang, release-clang, asan-gcc, asan-clang, tsan-gcc, tsan-clang]
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y cmake gcc g++ clang git ninja-build
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} 
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure
+
+  # -Wunused can fire if we not careful with these flags so just check if builds successfuly for any combo
+  # (preset/compiler doesn't matter)
+  flag-werror-check:
+    runs-on: ubuntu-latest
+    container: ubuntu:25.04
+    strategy:
+      fail-fast: false
+      matrix:
+        flags:
+          - { no_network: ON,  no_sleep: OFF }
+          - { no_network: OFF, no_sleep: ON  }
+          - { no_network: ON,  no_sleep: ON  }
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y cmake gcc g++ git ninja-build
+      - name: Configure
+        run: cmake --preset debug-gcc -DBUILD_UNIT_TESTS=ON -DDEBUG_NO_NETWORK=${{ matrix.flags.no_network }} -DDEBUG_NO_SLEEP=${{ matrix.flags.no_sleep }}
+      - name: Build only
+        run: cmake --build --preset debug-gcc 

@@ -2,6 +2,8 @@ find_package(GTest 1.17.0 QUIET)
 
 if(NOT GTest_FOUND)
     message(STATUS "GTest not found on system, fetching v1.17.0...")
+
+    include(FetchContent)
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git

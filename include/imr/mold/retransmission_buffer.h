@@ -16,7 +16,7 @@ namespace imr::mold
       public:
         struct MessageRecord
         {
-            SequenceNumber sequence_number;
+            types::header::SequenceNumber sequence_number;
             std::size_t file_position;
         };
 
@@ -26,7 +26,7 @@ namespace imr::mold
         void push(MessageRecord&& message_record) noexcept;
 
         [[nodiscard]]
-        std::optional<std::size_t> file_position_for(SequenceNumber sequence_number) const noexcept;
+        std::optional<types::header::SequenceNumber> file_position_for(types::header::SequenceNumber sequence_number) const noexcept;
 
         [[nodiscard]]
         std::size_t size() const noexcept;
@@ -35,9 +35,9 @@ namespace imr::mold
         std::vector<MessageRecord> buffer_;
         std::size_t mask_;
         bool use_mask_;
-        alignas(64) std::atomic<SequenceNumber> write_seq_{0};
+        alignas(64) std::atomic<types::header::SequenceNumber> write_seq_{0};
 
         [[nodiscard]]
-        std::size_t index_for(SequenceNumber sequence_number) const noexcept;
+        std::size_t index_for(types::header::SequenceNumber sequence_number) const noexcept;
     };
 }

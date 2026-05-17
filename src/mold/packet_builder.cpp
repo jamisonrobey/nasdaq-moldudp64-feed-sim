@@ -4,87 +4,98 @@
 #include "imr/mold/types.h"
 
 #include <cassert>
+#include <source_location>
 #include <stdexcept>
+#include <format>
 
 namespace
 {
-    constexpr auto session_str_size{10UZ};
-    constexpr auto sequence_number_offset{session_str_size};
-    constexpr auto msg_count_offset{session_str_size + sizeof(imr::mold::SequenceNumber)};
+    // only one 'slot' technically but used because more clear than msg_count + 1 for full iovec count
+    constexpr auto header_slots{1};
 }
 
 namespace imr::mold
 {
     PacketBuilder::PacketBuilder(const Config& cfg)
         : MTU_{cfg.MTU},
-          buffer_(MTU_)
+          // resize iovecs for header and worst case where all messages are min size (2kib w/ 1492 MTU)
+          iovecs_(header_slots + (MTU_ / cfg.min_message_size))
     {
-        if (MTU_ < header_length)
+        if (MTU_ < types::header::length)
         {
-            throw std::runtime_error("PacketBuilder: MTU was must be at least {} bytes");
+            throw std::runtime_error(std::format("{}: Config::MTU must be at least {} bytes",
+                                                 std::source_location::current().function_name(), types::header::length));
         }
 
         if (cfg.session.empty())
         {
-            throw std::runtime_error("PacketBuilder: session is required");
+            throw std::runtime_error(std::format("{}: Config::session is required",
+                                                 std::source_location::current().function_name()));
         }
 
-        if (cfg.session.size() != session_str_size)
+        if (cfg.session.size() != sizeof(types::header::Session))
         {
-            throw std::runtime_error("PacketBuilder: A MoldUDP64 session must be exactly 10 characters");
+            throw std::runtime_error(std::format("{}: Config::session must be exactly 10 characters",
+                                                 std::source_location::current().function_name()));
         }
 
-        util::binary_io::write(buffer_, write_pos_, cfg.session);
+        // write session to header
+        util::binary_io::write_at(std::span(header_), 0, cfg.session);
+
+        // iovecs_.front() always header
+        iovecs_.front() = iovec{
+            .iov_base = header_.data(),
+            .iov_len = sizeof(header_),
+        };
+
+        min_message_size_ = cfg.min_message_size;
     }
 
     bool PacketBuilder::try_add(std::span<const char> message) noexcept
     {
-        if (write_pos_ + message.size() > MTU_ || message.size() == 0)
+
+        if (bytes_used_ + message.size() > MTU_ || message.empty())
         {
             return false;
         }
 
-        util::binary_io::write(buffer_, write_pos_, message);
-        ++msg_count_;
+        assert(message.size() >= min_message_size_);
 
+        iovecs_[header_slots + message_count_] = iovec{
+            .iov_base = const_cast<char*>(message.data()),
+            .iov_len = message.size(),
+        };
+
+        ++message_count_;
+        bytes_used_ += message.size();
         return true;
     }
 
-    std::span<const char> PacketBuilder::finalize() noexcept
+    std::span<iovec> PacketBuilder::finalize() noexcept
     {
-        util::binary_io::write_at_be(buffer_, msg_count_offset, msg_count_);
+        // write msg count
+        util::binary_io::write_at_be(std::span(header_), types::header::message_count_offset, message_count_);
 
-        // not required to be noexcept by the standard, but is in gcc/clang (supported compilers)
-        static_assert(noexcept(std::span<const char>(static_cast<const char*>(nullptr), 0uz)),
-                      "span(ptr, count) must be implemented as noexcept");
-        return std::span(buffer_.data(), write_pos_);
+        return std::span(iovecs_.data(), header_slots + message_count_);
     }
 
-    void PacketBuilder::reset(mold::SequenceNumber sequence_number) noexcept
+    std::string_view PacketBuilder::session() const noexcept
     {
-        // session never changes so step over
-        write_pos_ = sequence_number_offset;
-
-        util::binary_io::write_be(buffer_, write_pos_, sequence_number);
-
-        msg_count_ = 0;
-        // no need to write msg_count_ now
-        write_pos_ += sizeof(msg_count_);
+        return std::string_view(header_.data(), sizeof(types::header::Session));
     }
 
-    void PacketBuilder::set_sequence_number(SequenceNumber sequence_number) noexcept
+    types::header::MessageCount PacketBuilder::message_count() const noexcept
     {
-        util::binary_io::write_at_be(buffer_, sequence_number_offset, sequence_number);
+        return message_count_;
     }
 
-    mold::MessageCount PacketBuilder::message_count() const noexcept
+    void PacketBuilder::reset(types::header::SequenceNumber sequence_number) noexcept
     {
-        return msg_count_;
-    }
+        // write seq
+        util::binary_io::write_at_be(std::span(header_), types::header::sequence_number_offset, sequence_number);
 
-    void PacketBuilder::set_message_count(MessageCount msg_count) noexcept
-    {
-        util::binary_io::write_at_be(buffer_, msg_count_offset, msg_count);
+        // no need to write message_count_ yet
+        message_count_ = 0;
+        bytes_used_ = types::header::length;
     }
-
 }

@@ -14,9 +14,9 @@ namespace
     template <std::size_t N>
     auto make_msg_block(std::array<char, N> body)
     {
-        std::array<char, sizeof(mold::LengthPrefix) + N> block{};
+        std::array<char, sizeof(imr::mold::types::LengthPrefix) + N> block{};
         std::size_t pos = 0;
-        util::binary_io::write_be(std::span{block}, pos, static_cast<mold::LengthPrefix>(N));
+        util::binary_io::write_be(std::span{block}, pos, static_cast<imr::mold::types::LengthPrefix>(N));
         util::binary_io::write(std::span{block}, pos, std::span{body});
         return block;
     }
@@ -30,8 +30,8 @@ TEST(MoldIoReadMessage, ValidMessage_ReturnsFullSpanAndAdvancesPos)
 
     const auto res{mold::io::read_message(std::span<const char>(block), pos)};
 
-    EXPECT_EQ(res.size(), sizeof(mold::LengthPrefix) + msg.size());
-    EXPECT_EQ(pos, sizeof(mold::LengthPrefix) + msg.size());
+    EXPECT_EQ(res.size(), sizeof(imr::mold::types::LengthPrefix) + msg.size());
+    EXPECT_EQ(pos, sizeof(imr::mold::types::LengthPrefix) + msg.size());
 }
 
 TEST(MoldIoReadMessage, TruncatedLengthPrefix_ReturnsEmptyPosUnchanged)
@@ -53,7 +53,7 @@ TEST(MoldIoReadMessage, TruncatedBody_ReturnsEmptyPosUnchanged)
     std::size_t pos{0};
 
     // truncate block so length prefix claims more bytes than it actually contains
-    const auto truncated{std::span(block).subspan(0, sizeof(mold::LengthPrefix) + 2)};
+    const auto truncated{std::span(block).subspan(0, sizeof(imr::mold::types::LengthPrefix) + 2)};
     const auto res{mold::io::read_message(truncated, pos)};
 
     EXPECT_TRUE(res.empty());

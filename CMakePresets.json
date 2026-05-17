@@ -80,3 +80,4 @@
     { "name": "tsan-clang",   "configurePreset": "tsan-clang" }
   ]
 }
+

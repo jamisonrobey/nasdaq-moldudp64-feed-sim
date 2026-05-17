@@ -12,7 +12,7 @@ jobs:
         preset: [debug-gcc, release-gcc, debug-clang, release-clang, asan-gcc, asan-clang, tsan-gcc, tsan-clang]
     steps:
       - uses: actions/checkout@v4
-      - run: apt-get update && apt-get install -y cmake gcc g++ clang git ninja-build
+      - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON
       - name: Build

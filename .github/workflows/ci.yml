@@ -14,11 +14,7 @@ jobs:
         with:
           path: /var/cache/apt
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
-      - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build
-      - uses: actions/cache@v4
-        with:
-          path: build/_deps
-          key: gtest-v1.17.0
+      - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build libgtest-dev
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON
       - name: Build
@@ -40,15 +36,12 @@ jobs:
           - { no_network: ON,  no_sleep: ON  }
     steps:
       - uses: actions/checkout@v4
+  # cache system packages
       - uses: actions/cache@v4
         with:
           path: /var/cache/apt
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
       - run: apt-get update && apt-get install -y cmake gcc g++ git ninja-build
-      - uses: actions/cache@v4
-        with:
-          path: build/_deps
-          key: gtest-v1.17.0
       - name: Configure
         run: cmake --preset debug-gcc -DBUILD_UNIT_TESTS=ON -DDEBUG_NO_NETWORK=${{ matrix.flags.no_network }} -DDEBUG_NO_SLEEP=${{ matrix.flags.no_sleep }}
       - name: Build only

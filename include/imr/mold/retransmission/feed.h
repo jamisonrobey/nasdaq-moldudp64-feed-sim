@@ -1,16 +1,15 @@
 #pragma once
 
-#include "imr/mold/packet_builder.h"
 #include "imr/mold/retransmission_buffer.h"
-#include "imr/mold/types.h"
 #include "imr/util/file_descriptor.h"
+#include "imr/util/zstring_view.h"
+#include "imr/mold/packet_builder.h"
 
+#include <array>
+
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/epoll.h>
-#include <netinet/in.h>
-
-#include <string_view>
-#include <cstdint>
 
 namespace imr::mold::retransmission
 {
@@ -19,51 +18,46 @@ namespace imr::mold::retransmission
       public:
         struct Config
         {
-            std::string_view address;
+            util::zstring_view address;
             std::uint16_t port;
-            // epoll_wait() take int size not size type
-            int epoll_max_events{1024};
         };
 
-        Feed(const Config& cfg,
-             int shutdown_fd,
-             const PacketBuilder::Config& packet_builder_cfg,
-             std::span<const char> file,
-             RetransmissionBuffer& retransmission_buffer);
+        explicit Feed(const Config& cfg,
+                      const PacketBuilder::Config& packet_builder_cfg,
+                      const RetransmissionBuffer& retransmission_buffer,
+                      int shutdown_fd);
 
         void start();
 
       private:
         util::FileDescriptor socket_{socket(AF_INET, SOCK_DGRAM, 0)};
         util::FileDescriptor epoll_fd_{epoll_create1(0)};
-        std::vector<epoll_event> epoll_events_;
-
-        sockaddr_in server_addr_in{};
-
         int shutdown_fd_;
+        // so we dont have to static_cast .size() each time
+        static constexpr int num_epoll_events{2};
+        std::array<epoll_event, num_epoll_events> epoll_events_{};
+        std::array<char, types::header::length> recv_buffer_{};
 
         PacketBuilder packet_builder_;
         std::span<const char> file_;
 
-        RetransmissionBuffer* retransmission_buffer_;
+        const RetransmissionBuffer* retransmission_buffer_;
 
-        bool running_{false};
-
-        void handle_events();
-        void process_request(int client_fd);
+        void handle_request(int client_fd);
 
         struct RequestContext
         {
             sockaddr_in client_address;
-            SequenceNumber starting_sequence;
-            MessageCount msg_count;
+            types::header::SequenceNumber starting_sequence;
+            types::header::MessageCount msg_count;
             std::size_t file_position_for_retransmission;
         };
-        std::optional<RequestContext> parse_request(int client_fd);
 
-        void fill_packet(const RequestContext& ctx);
-        void flush_packet();
+        std::optional<RequestContext> parse_request(sockaddr_in&& client_addr);
 
-        void setup_networking(const Config& cfg);
+        void build_packet(const RequestContext& ctx);
+        void send_packet(const sockaddr_in& client_address);
+
+        void configure_socket(const Config& cfg);
     };
-};
+}

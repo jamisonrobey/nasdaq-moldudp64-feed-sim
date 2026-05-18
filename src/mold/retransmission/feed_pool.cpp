@@ -1,0 +1,32 @@
+#include "imr/mold/retransmission/feed_pool.h"
+
+#include <unistd.h>
+
+namespace imr::mold::retransmission
+{
+    FeedPool::FeedPool(std::size_t num_threads,
+                       const Feed::Config& feed_cfg,
+                       const PacketBuilder::Config& packet_builder_cfg,
+                       const RetransmissionBuffer& retransmission_buffer)
+        : feeds_(num_threads),
+          feed_cfg_{feed_cfg},
+          packet_builder_cfg_{packet_builder_cfg}
+    {
+        for (auto i{0UZ}; i < feeds_.size(); ++i)
+        {
+            feeds_.emplace_back([this, &retransmission_buffer] {
+                Feed feed(feed_cfg_, packet_builder_cfg_, retransmission_buffer, shutdown_fd_);
+                feed.start();
+            });
+        }
+    }
+
+    void FeedPool::stop() const
+    {
+        constexpr std::uint64_t val{1};
+        if (write(shutdown_fd_, &val, sizeof(val)) < 0)
+        {
+            throw std::system_error(errno, std::system_category());
+        }
+    }
+};

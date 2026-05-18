@@ -19,11 +19,14 @@ if(ENABLE_ASAN AND ENABLE_TSAN)
 endif()
 
 add_library(${PROJECT_NAME} STATIC
+    src/server.cpp
+    src/mold/retransmission_buffer.cpp
+    src/mold/downstream/feed.cpp
+    src/mold/retransmission/feed.cpp
+    src/mold/retransmission/feed_pool.cpp
     src/itch/timestamp.cpp
     src/mold/io.cpp
     src/mold/packet_builder.cpp
-    src/mold/retransmission_buffer.cpp
-    src/mold/downstream/feed.cpp
     src/util/memory_mapped_file.cpp
     src/util/file_descriptor.cpp
 )

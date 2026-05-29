@@ -8,3 +8,4 @@ NamespaceIndentation: All
 FixNamespaceComments: false
 SortIncludes: false
 AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse

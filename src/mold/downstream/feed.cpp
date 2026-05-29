@@ -7,7 +7,6 @@
 #include <source_location>
 #include <arpa/inet.h>
 #include <thread>
-#include <print>
 
 namespace imr::mold::downstream
 {
@@ -21,49 +20,52 @@ namespace imr::mold::downstream
         configure_socket(cfg);
     }
 
-    void Feed::start()
+    void Feed::start(std::stop_token st)
     {
-        while (file_pos_ < file_.size() && !stop_requested_)
+        while (file_pos_ < file_.size() && !st.stop_requested())
         {
-            apply_pacing(build_packet());
+            if (const std::optional timestamp{build_packet()}; !timestamp) break;
+            else apply_pacing(*timestamp);
+
             send_packet();
         }
     }
 
-    void Feed::stop() noexcept
-    {
-        stop_requested_ = true;
-    }
-
-    std::chrono::nanoseconds Feed::build_packet()
+    std::optional<Feed::Timestamp> Feed::build_packet()
     {
         packet_builder_.reset(sequence_number_);
 
-        auto first_message{true};
-        Timestamp first_msg_timestamp;
+        std::optional<Timestamp> first_msg_timestamp;
 
         while (file_pos_ < file_.size())
         {
+
             const std::size_t msg_file_pos{file_pos_};
             const std::span msg{mold::io::read_message(file_, file_pos_)};
 
-            // eof
+            // either eof or file format wrong
             if (msg.empty()) [[unlikely]]
             {
-                break;
+                return std::nullopt;
             }
 
-            // packet full
+            // rollback when packet is full
             if (!packet_builder_.try_add(msg))
             {
                 file_pos_ = msg_file_pos;
                 break;
             }
 
-            if (first_message)
+            if (!first_msg_timestamp.has_value())
             {
+                // bad file
+                if (file_pos_ += itch::timestamp_size > file_pos_) [[unlikely]]
+                {
+                    return std::nullopt;
+                }
+
+                // msg includes length prefix so skip over that for extracting timestamp
                 first_msg_timestamp = itch::extract_timestamp(msg.subspan(sizeof(types::LengthPrefix)));
-                first_message = false;
             }
 
             assert(retransmission_buffer_ != nullptr);
@@ -73,7 +75,7 @@ namespace imr::mold::downstream
             });
         }
 
-        return first_msg_timestamp;
+        return *first_msg_timestamp;
     }
 
     void Feed::apply_pacing(Timestamp first_msg_timestamp)
@@ -99,9 +101,10 @@ namespace imr::mold::downstream
         {
             std::perror("sendto");
         }
+        // todo: fix this condition because iovec size doesnt = the packet sent size
         else if (static_cast<std::size_t>(bytes_sent) != packet.size())
         {
-            std::println(stderr, "sendto: only sent {} of {} bytes", bytes_sent, packet.size());
+            // std::println(stderr, "sendto: only sent {} of {} bytes", bytes_sent, packet.size());
         }
 #endif
     }

@@ -1,6 +1,8 @@
 #include "imr/util/file_descriptor.h"
 
 #include <fcntl.h>
+#include <filesystem>
+#include <source_location>
 #include <stdexcept>
 #include <utility>
 #include <unistd.h>
@@ -18,11 +20,20 @@ namespace imr::util
 
     FileDescriptor::FileDescriptor(const std::filesystem::path& path, int flags)
     {
+        if (!std::filesystem::exists(path) || std::filesystem::is_directory(path))
+        {
+            throw std::invalid_argument(std::format("{} path is not a file {}",
+                                                    std::source_location::current().function_name(),
+                                                    path.c_str()));
+        }
+
         const int fd{open(path.c_str(), flags)};
         if (fd < 0)
         {
-            throw std::system_error(errno, std::system_category());
+            throw std::system_error(errno, std::system_category(),
+                                    std::format("{} failed to open file", std::source_location::current().function_name()));
         }
+
         fd_ = fd;
     }
 

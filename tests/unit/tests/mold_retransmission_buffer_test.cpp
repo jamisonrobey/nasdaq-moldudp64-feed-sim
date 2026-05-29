@@ -1,83 +1,76 @@
 #include <gtest/gtest.h>
+
 #include "imr/mold/retransmission_buffer.h"
 
 using namespace imr;
 
-namespace
+class RetransmissionBufferTest : public ::testing::Test
 {
-    void push(mold::RetransmissionBuffer& buf, imr::mold::types::header::SequenceNumber seq, std::size_t pos)
+  protected:
+    mold::RetransmissionBuffer buf{4};
+
+    void push(mold::types::header::SequenceNumber seq, std::size_t pos)
     {
-        buf.push(mold::RetransmissionBuffer::MessageRecord{
-            .sequence_number = seq,
-            .file_position = pos,
-        });
+        buf.push({.sequence_number = seq, .file_position = pos});
     }
+};
+
+TEST_F(RetransmissionBufferTest, Ctor_Zero_Throws)
+{
+    EXPECT_THROW(mold::RetransmissionBuffer(0), std::invalid_argument);
 }
 
-TEST(RetransmissionBufferCtor, Zero_Throws)
+TEST_F(RetransmissionBufferTest, Size_ReturnsConstructorArg)
 {
-    EXPECT_ANY_THROW(mold::RetransmissionBuffer(0));
+    EXPECT_EQ(buf.size(), 4u);
 }
 
-TEST(RetransmissionBufferSize, ReturnsConstructorArg)
+TEST_F(RetransmissionBufferTest, Push_Record_IsRetrievable)
 {
-    mold::RetransmissionBuffer buffer(8);
-    EXPECT_EQ(buffer.size(), 8u);
-}
-
-TEST(RetransmissionBufferPush, PushedRecord_IsRetrievable)
-{
-    mold::RetransmissionBuffer buffer(4);
-    push(buffer, 1, 100);
-
-    const auto result{buffer.file_position_for(1)};
+    push(1, 100);
+    const auto result{buf.file_position_for(1)};
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(*result, 100u);
 }
 
-TEST(RetransmissionBufferPush, BeyondCapacity_OldestSlotOverwrittenNewestRetrievable)
+TEST_F(RetransmissionBufferTest, Push_BeyondCapacity_OldestEvictedNewestRetrievable)
 {
-    mold::RetransmissionBuffer buffer(4);
-    push(buffer, 1, 100);
-    push(buffer, 2, 200);
-    push(buffer, 3, 300);
-    push(buffer, 4, 400);
-    push(buffer, 5, 500); // evicts seq=1
-
-    EXPECT_EQ(buffer.file_position_for(1), std::nullopt);
-
-    const auto result{buffer.file_position_for(5)};
+    push(1, 100);
+    push(2, 200);
+    push(3, 300);
+    push(4, 400);
+    push(5, 500); // evicts seq=1
+    EXPECT_EQ(buf.file_position_for(1), std::nullopt);
+    const auto result{buf.file_position_for(5)};
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(*result, 500u);
 }
 
-TEST(RetransmissionBufferFilePositionFor, EmptyBuffer_ReturnsNullopt)
+TEST_F(RetransmissionBufferTest, FilePositionFor_EmptyBuffer_ReturnsNullopt)
 {
-    mold::RetransmissionBuffer buffer(4);
-    EXPECT_EQ(buffer.file_position_for(1), std::nullopt);
+    EXPECT_EQ(buf.file_position_for(1), std::nullopt);
 }
 
-TEST(RetransmissionBufferFilePositionFor, FutureSequence_ReturnsNullopt)
+TEST_F(RetransmissionBufferTest, FilePositionFor_FutureSequence_ReturnsNullopt)
 {
-    mold::RetransmissionBuffer buffer(4);
-    push(buffer, 1, 100);
-    EXPECT_EQ(buffer.file_position_for(2), std::nullopt);
+    push(1, 100);
+    EXPECT_EQ(buf.file_position_for(2), std::nullopt);
 }
 
-TEST(RetransmissionBufferFilePositionFor, LiveWindowAfterWrap_ReturnsCorrectPositions)
+TEST_F(RetransmissionBufferTest, FilePositionFor_LiveWindowAfterWrap_ReturnsCorrectPositions)
 {
-    // buffer holds 4 entries; push 6 so it wraps — seq 1,2 evicted, seq 3..6 live
-    mold::RetransmissionBuffer buffer(4);
-    for (imr::mold::types::header::SequenceNumber s = 1; s <= 6; ++s)
-        push(buffer, s, s * 10);
-
-    EXPECT_EQ(buffer.file_position_for(1), std::nullopt);
-    EXPECT_EQ(buffer.file_position_for(2), std::nullopt);
-
-    for (imr::mold::types::header::SequenceNumber s = 3; s <= 6; ++s)
+    // push 6 entries into size-4 buffer; seq 1,2 evicted, seq 3..6 live
+    for (mold::types::header::SequenceNumber seq = 1; seq <= 6; ++seq)
     {
-        const auto result{buffer.file_position_for(s)};
-        ASSERT_TRUE(result.has_value()) << "expected live entry for seq=" << s;
-        EXPECT_EQ(*result, s * 10);
+        push(seq, seq * 10);
+    }
+
+    EXPECT_EQ(buf.file_position_for(1), std::nullopt);
+    EXPECT_EQ(buf.file_position_for(2), std::nullopt);
+    for (mold::types::header::SequenceNumber seq = 3; seq <= 6; ++seq)
+    {
+        const auto result{buf.file_position_for(seq)};
+        ASSERT_TRUE(result.has_value()) << "expected live entry for seq=" << seq;
+        EXPECT_EQ(*result, seq * 10);
     }
 }

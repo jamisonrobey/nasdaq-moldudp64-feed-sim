@@ -11,9 +11,13 @@ namespace imr::util
       public:
         struct Config
         {
+            // this throws if not a valid path or is a directory
             std::filesystem::path path;
-            int mmap_flags{MAP_PRIVATE};
+            // MAP_PRIVATE always used cause read only but you can add more with this
+            int mmap_flags{0};
             off_t offset{0};
+            // 0 skips madvise
+            int madvise_flags{0};
         };
 
         explicit MemoryMappedFile(const Config& cfg);

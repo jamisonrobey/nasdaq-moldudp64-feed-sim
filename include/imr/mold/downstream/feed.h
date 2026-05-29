@@ -8,6 +8,7 @@
 #include "imr/util/zstring_view.h"
 
 #include <netinet/in.h>
+#include <stop_token>
 #include <sys/socket.h>
 
 namespace imr::mold::downstream
@@ -17,11 +18,13 @@ namespace imr::mold::downstream
       public:
         struct Config
         {
+            // throw invalid argument if empty or malformed
             util::zstring_view mcast_group;
             std::uint16_t port;
             std::uint8_t ttl{1};
             bool loopback{false};
-            Pacer<std::chrono::steady_clock>::Config pacer_cfg;
+            // control pacing
+            Pacer<std::chrono::steady_clock>::Config pacer_cfg{};
         };
 
         explicit Feed(const Config& cfg,
@@ -29,10 +32,8 @@ namespace imr::mold::downstream
                       std::span<const char> file,
                       RetransmissionBuffer& retransmission_buffer);
 
-        // run until EOF
-        void start();
-        // stop early
-        void stop() noexcept;
+        // block until EOF
+        void start(std::stop_token st);
 
       private:
         util::FileDescriptor socket_;
@@ -42,7 +43,6 @@ namespace imr::mold::downstream
         std::span<const char> file_;
         std::size_t file_pos_{0};
         types::header::SequenceNumber sequence_number_{1};
-        bool stop_requested_{false};
 
         Pacer<std::chrono::steady_clock> pacer_;
         PacketBuilder packet_builder_;
@@ -51,7 +51,7 @@ namespace imr::mold::downstream
         using Timestamp = std::chrono::nanoseconds;
 
         void configure_socket(const Config& cfg);
-        Timestamp build_packet();
+        std::optional<Timestamp> build_packet();
         void send_packet() noexcept;
         void apply_pacing(Timestamp first_msg_timestamp);
     };

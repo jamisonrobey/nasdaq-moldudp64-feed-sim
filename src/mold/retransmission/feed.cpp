@@ -9,9 +9,9 @@
 #include <source_location>
 #include <stdexcept>
 #include <format>
-#include <print>
 #include <source_location>
 #include <system_error>
+#include <print>
 
 namespace imr::mold::retransmission
 {
@@ -23,12 +23,18 @@ namespace imr::mold::retransmission
           packet_builder_(packet_builder_cfg),
           retransmission_buffer_{&retransmission_buffer}
     {
+        // 0 is stdin so will EPERM w/ epoll
+        if (shutdown_fd_ <= 0)
+        {
+            throw std::invalid_argument(std::format("{} invalid shutdown_fd {}", std::source_location::current().function_name(), shutdown_fd_));
+        }
         configure_socket(cfg);
     }
 
     void Feed::start()
     {
-        while (true)
+        auto should_stop{false};
+        while (!should_stop)
         {
             const int nfds{epoll_wait(epoll_fd_.get(), epoll_events_.data(), num_epoll_events, -1)};
 
@@ -47,6 +53,7 @@ namespace imr::mold::retransmission
 
                 if (event.data.fd == shutdown_fd_)
                 {
+                    should_stop = true;
                     break;
                 }
 
@@ -89,7 +96,9 @@ namespace imr::mold::retransmission
         if (req_ctx)
         {
             build_packet(*req_ctx);
+#ifndef DEBUG_NO_NETWORK
             send_packet(req_ctx->client_address);
+#endif
         }
     }
 
@@ -114,9 +123,7 @@ namespace imr::mold::retransmission
         }
 
         req_ctx.file_position_for_retransmission = *file_pos;
-
         req_ctx.msg_count = util::binary_io::read_at_be<MessageCount>(recv_buffer_, message_count_offset);
-
         req_ctx.client_address = std::move(client_addr);
 
         return req_ctx;
@@ -146,9 +153,7 @@ namespace imr::mold::retransmission
 
     void Feed::send_packet(const sockaddr_in& client_addr)
     {
-        [[maybe_unused]]
         std::span msg{packet_builder_.finalize()};
-#ifndef DEBUG_NO_NETWORK
         if (const auto bytes_sent{sendto(socket_.get(),
                                          msg.data(),
                                          msg.size(),
@@ -166,14 +171,13 @@ namespace imr::mold::retransmission
                          std::source_location::current().function_name(), bytes_sent, msg.size());
 #endif
         }
-#endif
     }
 
     void Feed::configure_socket(const Config& cfg)
     {
         constexpr auto sockopt_on{1};
-        if (setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEPORT, &sockopt_on, sizeof(sockopt_on)) < 0 ||
-            setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0)
+        if (setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
+            setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEPORT, &sockopt_on, sizeof(sockopt_on)) < 0)
         {
             throw std::system_error(errno, std::system_category());
         }
@@ -189,7 +193,14 @@ namespace imr::mold::retransmission
         }
         else if (ret < 0)
         {
-            throw std::system_error(errno, std::system_category());
+            throw std::system_error(errno, std::system_category(),
+                                    std::format("{} inet_pton", std::source_location::current().function_name()));
+        }
+
+        if (bind(socket_.get(), reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) < 0)
+        {
+            throw std::system_error(errno, std::system_category(),
+                                    std::format("{} bind", std::source_location::current().function_name()));
         }
 
         epoll_event event{};

@@ -1,155 +1,156 @@
 #include <gtest/gtest.h>
+
 #include "imr/mold/packet_builder.h"
 #include "imr/mold/types.h"
+#include "util/binary_io.h"
+
 #include <array>
-#include <bit>
-#include <cstring>
 
 using namespace imr;
 
-namespace
+class MoldPacketBuilderTest : public ::testing::Test
 {
-    constexpr mold::PacketBuilder::Config example_cfg{
+  protected:
+    static constexpr mold::PacketBuilder::Config cfg{
         .session = "SESSION001",
         .MTU = 100,
     };
+    static constexpr std::array<char, mold::PacketBuilder::min_message_size_totalview_itch> min_msg{};
 
-    constexpr std::array<char, mold::PacketBuilder::min_message_size_totalview_itch> min_msg{};
+    mold::PacketBuilder builder{cfg};
 
-    template <typename T>
-    T read_be(const void* base, std::size_t offset)
+    void add_messages(int n)
     {
-        T value{};
-        std::memcpy(&value, static_cast<const char*>(base) + offset, sizeof(T));
-        return std::byteswap(value);
+        for (auto i{0}; i < n; ++i)
+            ASSERT_TRUE(builder.try_add(min_msg));
     }
-}
+};
 
-TEST(MoldPacketBuilder, CopiesSession_ToStartOfHeader)
+TEST_F(MoldPacketBuilderTest, Ctor_ValidConfig_CopiesSessionToHeader)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-
-    auto packet{packet_builder.finalize()};
+    auto packet{builder.finalize()};
 
     EXPECT_EQ(
-        std::string_view(static_cast<const char*>(packet.front().iov_base), example_cfg.session.size()),
-        example_cfg.session);
+        std::string_view(static_cast<const char*>(packet.front().iov_base), cfg.session.size()),
+        cfg.session);
 }
 
-TEST(MoldPacketBuilder, Session_ReturnsConfigSession)
+TEST_F(MoldPacketBuilderTest, Ctor_SessionLengthNot10_ThrowsInvalidArgument)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-
-    EXPECT_EQ(packet_builder.session(), example_cfg.session);
+    EXPECT_THROW(mold::PacketBuilder packet_builder({.session = ""}), std::invalid_argument);
+    // one under
+    EXPECT_THROW(mold::PacketBuilder packet_builder({.session = "012345678"}), std::invalid_argument);
+    // one over
+    EXPECT_THROW(mold::PacketBuilder packet_builder({.session = "01234567890"}), std::invalid_argument);
 }
 
-TEST(MoldPacketBuilder, TryAdd_ReturnsTrueAndIncrementsCount_ForValidMessage)
+TEST_F(MoldPacketBuilderTest, Ctor_SessionExactly10Chars_DoesNotThrow)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-
-    EXPECT_TRUE(packet_builder.try_add(min_msg));
-    EXPECT_EQ(packet_builder.message_count(), 1);
+    EXPECT_NO_THROW(mold::PacketBuilder packet_builder({.session = "0123456789"}));
 }
 
-TEST(MoldPacketBuilder, TryAdd_ReturnsFalse_WhenMTUExceeded)
+TEST_F(MoldPacketBuilderTest, Session_Always_ReturnsConfiguredSession)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    while (packet_builder.try_add(min_msg))
-    {
-    }
-
-    EXPECT_FALSE(packet_builder.try_add(min_msg));
+    EXPECT_EQ(builder.session(), cfg.session);
 }
 
-TEST(MoldPacketBuilder, TryAdd_ReturnsFalse_ForEmptyMessage)
+TEST_F(MoldPacketBuilderTest, TryAdd_PacketFull_ReturnsFalse)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
+    constexpr auto capacity{(cfg.MTU - mold::types::header::length) / min_msg.size()};
 
-    constexpr std::array<char, 0> empty{};
-    EXPECT_FALSE(packet_builder.try_add(empty));
+    for (auto i{0UZ}; i < capacity; ++i)
+        ASSERT_TRUE(builder.try_add(min_msg));
+
+    EXPECT_FALSE(builder.try_add(min_msg));
 }
 
-TEST(MoldPacketBuilder, TryAdd_MessageCountAccumulates)
+TEST_F(MoldPacketBuilderTest, TryAdd_EmptyMessage_ReturnsFalse)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
-
-    EXPECT_EQ(packet_builder.message_count(), 2);
+    EXPECT_FALSE(builder.try_add({}));
 }
 
-TEST(MoldPacketBuilder, Finalize_WritesMessageCountToHeader)
+TEST_F(MoldPacketBuilderTest, TryAdd_MultipleMessages_AccumulatesMessageCount)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
+    constexpr auto to_add{5};
+    add_messages(to_add);
 
-    auto packet{packet_builder.finalize()};
-
-    const auto count{read_be<mold::types::header::MessageCount>(
-        packet.front().iov_base,
-        mold::types::header::message_count_offset)};
-    EXPECT_EQ(count, 2);
+    EXPECT_EQ(builder.message_count(), to_add);
 }
 
-TEST(MoldPacketBuilder, Finalize_ReturnsHeaderSlotPlusOneIovecPerMessage)
+TEST_F(MoldPacketBuilderTest, Finalize_AfterMessages_WritesMessageCountToHeader)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
+    constexpr auto to_add{5};
+    add_messages(to_add);
 
-    auto packet{packet_builder.finalize()};
+    auto packet{builder.finalize()};
 
-    EXPECT_EQ(packet.size(), 3); // header + 2 messages
+    const auto count{
+        util::binary_io::read_at_be<mold::types::header::MessageCount>(
+            std::span(static_cast<char*>(packet.front().iov_base), packet.front().iov_len),
+            mold::types::header::message_count_offset),
+    };
+
+    EXPECT_EQ(count, to_add);
+}
+
+TEST_F(MoldPacketBuilderTest, Finalize_AfterMessages_ReturnsHeaderIovecPlusOnePerMessage)
+{
+    constexpr auto to_add{5};
+    add_messages(to_add);
+
+    auto packet{builder.finalize()};
+
+    EXPECT_EQ(packet.size(), to_add + 1);
     EXPECT_EQ(packet[0].iov_len, mold::types::header::length);
-    EXPECT_EQ(packet[1].iov_len, min_msg.size());
-    EXPECT_EQ(packet[2].iov_len, min_msg.size());
+    for (auto i{1UZ}; i < to_add; ++i)
+    {
+        EXPECT_EQ(packet[i].iov_len, min_msg.size());
+    }
 }
 
-TEST(MoldPacketBuilder, Finalize_MessageIovecs_PointToOriginalData)
+TEST_F(MoldPacketBuilderTest, Finalize_AfterMessage_MessageIovecPointsToOriginalData)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
     std::array<char, mold::PacketBuilder::min_message_size_totalview_itch> msg{'A', 'B', 'C'};
-    ASSERT_TRUE(packet_builder.try_add(msg));
+    ASSERT_TRUE(builder.try_add(msg));
 
-    auto packet{packet_builder.finalize()};
+    auto packet{builder.finalize()};
 
-    // iov_base must point into the original buffer
     EXPECT_EQ(packet[1].iov_base, msg.data());
 }
 
-TEST(MoldPacketBuilder, Reset_ClearsMessageCount)
+TEST_F(MoldPacketBuilderTest, Reset_AfterMessages_ClearsMessageCount)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
-    ASSERT_TRUE(packet_builder.try_add(min_msg));
+    add_messages(2);
 
-    packet_builder.reset(1);
+    builder.reset(1);
 
-    EXPECT_EQ(packet_builder.message_count(), 0);
+    EXPECT_EQ(builder.message_count(), 0);
 }
 
-TEST(MoldPacketBuilder, Reset_AllowsRefill)
+TEST_F(MoldPacketBuilderTest, Reset_WhenFull_AllowsRefill)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
-    while (packet_builder.try_add(min_msg))
+    while (builder.try_add(min_msg))
     {
     }
 
-    packet_builder.reset(1);
+    builder.reset(1);
 
-    EXPECT_TRUE(packet_builder.try_add(min_msg));
+    EXPECT_TRUE(builder.try_add(min_msg));
 }
 
-TEST(MoldPacketBuilder, Reset_WritesSequenceNumberToHeader)
+TEST_F(MoldPacketBuilderTest, Reset_GivenSequenceNumber_WritesSequenceNumberToHeader)
 {
-    mold::PacketBuilder packet_builder(example_cfg);
+    constexpr auto new_seq{99};
 
-    packet_builder.reset(42);
+    builder.reset(new_seq);
 
-    auto packet{packet_builder.finalize()};
-    const auto seq{read_be<mold::types::header::SequenceNumber>(
-        packet.front().iov_base,
-        mold::types::header::sequence_number_offset)};
-    EXPECT_EQ(seq, 42);
+    auto packet{builder.finalize()};
+
+    const auto builder_seq{
+        util::binary_io::read_at_be<mold::types::header::SequenceNumber>(
+            std::span(static_cast<char*>(packet.front().iov_base), packet.front().iov_len),
+            mold::types::header::sequence_number_offset),
+    };
+
+    EXPECT_EQ(builder_seq, new_seq);
 }

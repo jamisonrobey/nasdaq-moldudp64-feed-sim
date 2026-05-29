@@ -35,24 +35,24 @@ namespace imr::mold
         write_seq_.store(message_record.sequence_number, std::memory_order_release);
     }
 
-    std::optional<types::header::SequenceNumber> RetransmissionBuffer::file_position_for(types::header::SequenceNumber sequence_number)
+    std::optional<types::header::SequenceNumber> RetransmissionBuffer::file_position_for(types::header::SequenceNumber seq_num)
         const noexcept
     {
-        const auto current_sequence_number{write_seq_.load(std::memory_order_acquire)};
+        const auto current_seq_num{write_seq_.load(std::memory_order_acquire)};
 
-        const auto overwritten{sequence_number + buffer_.size() <= current_sequence_number};
-        const auto not_yet_sent{sequence_number > current_sequence_number};
-        const auto buffer_empty{current_sequence_number == 0};
+        const auto overwritten{seq_num + buffer_.size() <= current_seq_num};
+        const auto not_yet_sent{seq_num > current_seq_num};
+        const auto buffer_empty{current_seq_num == 0};
 
         if (overwritten || not_yet_sent || buffer_empty)
         {
             return std::nullopt;
         }
 
-        const auto& entry{buffer_[index_for(sequence_number)]};
+        const auto& entry{buffer_[index_for(seq_num)]};
 
         // check if writer lapped us between checking overwritten above and this read
-        if (entry.sequence_number != sequence_number)
+        if (entry.sequence_number != seq_num)
         {
             return std::nullopt;
         }
@@ -60,10 +60,10 @@ namespace imr::mold
         return entry.file_position;
     }
 
-    std::size_t RetransmissionBuffer::index_for(types::header::SequenceNumber sequence_number) const noexcept
+    std::size_t RetransmissionBuffer::index_for(types::header::SequenceNumber seq_num) const noexcept
     {
-        return use_mask_ ? sequence_number & mask_
-                         : sequence_number % buffer_.size();
+        return use_mask_ ? seq_num & mask_
+                         : seq_num % buffer_.size();
     }
 
     std::size_t RetransmissionBuffer::size() const noexcept

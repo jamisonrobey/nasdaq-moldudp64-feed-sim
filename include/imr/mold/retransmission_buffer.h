@@ -14,19 +14,18 @@ namespace imr::mold
     class RetransmissionBuffer
     {
       public:
+        explicit RetransmissionBuffer(std::size_t buffer_size);
+
         struct MessageRecord
         {
             types::header::SequenceNumber sequence_number;
             std::size_t file_position;
         };
 
-        // pow2 buffer_size uses bitmasking for index lookup (prefer this for performance), non-pow2 falls back to division
-        explicit RetransmissionBuffer(std::size_t buffer_size);
-
         void push(MessageRecord&& message_record) noexcept;
 
         [[nodiscard]]
-        std::optional<types::header::SequenceNumber> file_position_for(types::header::SequenceNumber sequence_number) const noexcept;
+        std::optional<types::header::SequenceNumber> file_position_for(types::header::SequenceNumber seq_num) const noexcept;
 
         [[nodiscard]]
         std::size_t size() const noexcept;
@@ -38,6 +37,6 @@ namespace imr::mold
         alignas(64) std::atomic<types::header::SequenceNumber> write_seq_{0};
 
         [[nodiscard]]
-        std::size_t index_for(types::header::SequenceNumber sequence_number) const noexcept;
+        std::size_t index_for(types::header::SequenceNumber seq_num) const noexcept;
     };
 }

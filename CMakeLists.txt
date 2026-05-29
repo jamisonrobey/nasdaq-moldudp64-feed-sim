@@ -1,22 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
-
 project(itch-mold-replay LANGUAGES CXX)
 
-include(CheckIPOSupported)
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-option(BUILD_UNIT_TESTS "Build unit tests" OFF)
-option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-option(DEBUG_NO_NETWORK "Disable network calls for debugging" OFF)
-option(DEBUG_NO_SLEEP "Disable sleep calls for debugging" OFF)
-
-if(ENABLE_ASAN AND ENABLE_TSAN)
-    message(FATAL_ERROR "ASAN and TSAN are mutually exclusive")
-endif()
 
 add_library(${PROJECT_NAME} STATIC
     src/server.cpp
@@ -30,6 +15,10 @@ add_library(${PROJECT_NAME} STATIC
     src/util/memory_mapped_file.cpp
     src/util/file_descriptor.cpp
 )
+
+add_library(imr::imr ALIAS ${PROJECT_NAME})
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC include
@@ -64,52 +53,53 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld)
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        -O3
-        -march=native
-    )
-
+    include(CheckIPOSupported)
+    target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native)
     check_ipo_supported(RESULT ipo_supported)
-
     if(ipo_supported)
-        set_property(TARGET ${PROJECT_NAME}
-            PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE
-        )
+        set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_link_options(-fuse-ld=lld)
-endif()
+if(PROJECT_IS_TOP_LEVEL)
+    option(BUILD_UNIT_TESTS        "Build unit tests"      OFF)
+    option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
+    option(ENABLE_ASAN             "Enable AddressSanitizer" OFF)
+    option(ENABLE_TSAN             "Enable ThreadSanitizer"  OFF)
+    option(DEBUG_NO_NETWORK        "Disable network calls"   OFF)
+    option(DEBUG_NO_SLEEP          "Disable sleep calls"     OFF)
 
-if(ENABLE_ASAN)
-    target_compile_options(${PROJECT_NAME} PUBLIC
-        -fsanitize=address,undefined
-    )
+    if(ENABLE_ASAN AND ENABLE_TSAN)
+        message(FATAL_ERROR "ASAN and TSAN are mutually exclusive")
+    endif()
 
-    target_link_options(${PROJECT_NAME} PUBLIC
-        -fsanitize=address,undefined
-    )
-elseif(ENABLE_TSAN)
-    target_compile_options(${PROJECT_NAME} PUBLIC
-        -fsanitize=thread
-    )
+    if(ENABLE_ASAN)
+        target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address,undefined)
+        target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=address,undefined)
+    elseif(ENABLE_TSAN)
+        target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
+        target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
+    endif()
 
-    target_link_options(${PROJECT_NAME} PUBLIC
-        -fsanitize=thread
-    )
-endif()
+    if(DEBUG_NO_NETWORK)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
+    endif()
+    if(DEBUG_NO_SLEEP)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
+    endif()
 
-if(DEBUG_NO_NETWORK)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
-endif()
-
-if(DEBUG_NO_SLEEP)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
-endif()
-
-if(BUILD_UNIT_TESTS)
-    enable_testing()
-    add_subdirectory(tests/unit)
+    if(BUILD_UNIT_TESTS OR BUILD_INTEGRATION_TESTS)
+        enable_testing()
+    endif()
+    if(BUILD_UNIT_TESTS)
+        add_subdirectory(tests/unit)
+    endif()
+    if(BUILD_INTEGRATION_TESTS)
+        add_subdirectory(tests/integration)
+    endif()
 endif()

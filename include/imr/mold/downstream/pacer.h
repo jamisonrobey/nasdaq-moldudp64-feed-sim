@@ -8,9 +8,30 @@ namespace imr::mold::downstream
     enum class MarketPhase
     {
         pre,
-        close,
-        open
+        open,
+        close
     };
+
+    inline constexpr std::chrono::nanoseconds phase_to_ns(MarketPhase phase)
+    {
+        using namespace std::chrono_literals;
+        switch (phase)
+        {
+        case MarketPhase::pre:
+            return 0ns;
+        case MarketPhase::open:
+            return 9h + 30min;
+        case MarketPhase::close:
+            return 16h;
+        default:
+            return 0ns;
+        }
+    }
+
+    // less verbose for caller than imr::mold::downstream::phase_to_ns(imr::mold::downstream::MarketPhase::pre)
+    inline constexpr auto market_open{phase_to_ns(MarketPhase::open)};
+    inline constexpr auto market_pre{phase_to_ns(MarketPhase::pre)};
+    inline constexpr auto market_close{phase_to_ns(MarketPhase::close)};
 
     template <typename T>
     concept ClockConcept = requires {
@@ -26,68 +47,57 @@ namespace imr::mold::downstream
         {
             double playback_speed{1.0};
             // MarketPhase::pre means no packets ignored
-            MarketPhase ignore_packets_before_phase{MarketPhase::pre};
-            Clock::time_point playback_wall_start{Clock::now()};
+            std::chrono::nanoseconds skip_before{phase_to_ns(MarketPhase::pre)};
         };
 
         Pacer(const Config& cfg)
             : playback_speed_{cfg.playback_speed},
-              ignore_packets_before_{phase_timestamp(cfg.ignore_packets_before_phase)},
-              replay_wall_start_{cfg.playback_wall_start} {}
+              skip_before_{cfg.skip_before} {}
 
         [[nodiscard]]
         std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
         {
-            if (packet_timestamp < ignore_packets_before_)
+            if (packet_timestamp < skip_before_)
             {
                 return std::nullopt;
             }
 
-            [[unlikely]]
-            if (!first_packet_timestamp_.has_value())
+            if (!replay_origin_.has_value()) [[unlikely]]
             {
-                first_packet_timestamp_ = packet_timestamp;
+                replay_origin_ = packet_timestamp;
+                wall_origin_ = Clock::now();
                 return std::chrono::nanoseconds{0};
             }
 
-            const auto message_time_offset{packet_timestamp - *first_packet_timestamp_};
-
-            const auto wall_time_offset{
-                std::chrono::nanoseconds(
-                    static_cast<int64_t>(static_cast<double>(message_time_offset.count()) / playback_speed_)),
-            };
-
-            const auto scheduled_dispatch_time{replay_wall_start_ + wall_time_offset};
-            const auto now{Clock::now()};
-
-            if (scheduled_dispatch_time <= now)
-            {
-                return std::chrono::nanoseconds{0};
-            }
-
-            return std::chrono::duration_cast<std::chrono::nanoseconds>(scheduled_dispatch_time - now);
-        }
-
-        static constexpr std::chrono::nanoseconds phase_timestamp(MarketPhase phase)
-        {
-            using namespace std::chrono_literals;
-            switch (phase)
-            {
-            case MarketPhase::pre:
-                return 0ns;
-            case MarketPhase::open:
-                return 9h + 30min;
-            case MarketPhase::close:
-                return 16h;
-            default:
-                return 0ns;
-            }
+            return calculate_delay(packet_timestamp);
         }
 
       private:
         double playback_speed_;
-        std::chrono::nanoseconds ignore_packets_before_;
-        Clock::time_point replay_wall_start_;
-        std::optional<std::chrono::nanoseconds> first_packet_timestamp_;
+        std::chrono::nanoseconds skip_before_;
+        Clock::time_point wall_origin_;
+        std::optional<std::chrono::nanoseconds> replay_origin_;
+
+        [[nodiscard]]
+        std::chrono::nanoseconds calculate_delay(std::chrono::nanoseconds packet_timestamp)
+        {
+            const auto replay_offset{packet_timestamp - *replay_origin_};
+
+            const auto scaled_offset{
+                std::chrono::nanoseconds(
+                    static_cast<int64_t>(static_cast<double>(replay_offset.count()) / playback_speed_)),
+            };
+
+            const auto send_at{wall_origin_ + scaled_offset};
+
+            const auto now{Clock::now()};
+
+            if (send_at <= now)
+            {
+                return std::chrono::nanoseconds{0};
+            }
+
+            return std::chrono::nanoseconds(send_at - now);
+        }
     };
 }

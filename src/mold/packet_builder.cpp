@@ -8,18 +8,11 @@
 #include <stdexcept>
 #include <format>
 
-namespace
-{
-    // only one 'slot' technically but used because more clear than msg_count + 1 for full iovec count
-    constexpr auto header_slots{1};
-}
-
 namespace imr::mold
 {
     PacketBuilder::PacketBuilder(const Config& cfg)
         : MTU_{cfg.MTU},
-          // resize iovecs for header and worst case where all messages are min size (2kib w/ 1492 MTU)
-          iovecs_(header_slots + (MTU_ / cfg.min_message_size))
+          min_message_size_{cfg.min_message_size}
     {
         if (MTU_ < types::header::length)
         {
@@ -27,75 +20,55 @@ namespace imr::mold
                                                  std::source_location::current().function_name(), types::header::length));
         }
 
-        if (cfg.session.empty())
-        {
-            throw std::runtime_error(std::format("{}: Config::session is required",
-                                                 std::source_location::current().function_name()));
-        }
-
         if (cfg.session.size() != sizeof(types::header::Session))
         {
-            throw std::runtime_error(std::format("{}: Config::session must be exactly 10 characters",
-                                                 std::source_location::current().function_name()));
+            throw std::invalid_argument(std::format("{}: Config::session must be exactly 10 characters",
+                                                    std::source_location::current().function_name()));
         }
 
-        // write session to header
-        util::binary_io::write_at(std::span(header_), 0, cfg.session);
+        // + 1 for header
+        iovecs_.reserve(1 + (MTU_ / cfg.min_message_size));
 
-        // iovecs_.front() always header
-        iovecs_.front() = iovec{
-            .iov_base = header_.data(),
-            .iov_len = sizeof(header_),
-        };
-
-        min_message_size_ = cfg.min_message_size;
+        util::binary_io::write_at(std::span(header_buffer_), 0, cfg.session);
+        iovecs_.emplace_back(header_buffer_.data(), header_buffer_.size());
+        bytes_remaining_ = MTU_ - types::header::length;
     }
 
     bool PacketBuilder::try_add(std::span<const char> message) noexcept
     {
-
-        if (bytes_used_ + message.size() > MTU_ || message.empty())
+        if (message.size() > bytes_remaining_ || message.empty())
         {
             return false;
         }
 
-        assert(message.size() >= min_message_size_);
+        assert(message.size() >= *min_message_size_);
 
-        iovecs_[header_slots + message_count_] = iovec{
-            .iov_base = const_cast<char*>(message.data()),
-            .iov_len = message.size(),
-        };
+        iovecs_.emplace_back(const_cast<char*>(message.data()), message.size());
+        bytes_remaining_ -= message.size();
 
-        ++message_count_;
-        bytes_used_ += message.size();
         return true;
     }
 
     std::span<iovec> PacketBuilder::finalize() noexcept
     {
-        // write msg count
-        util::binary_io::write_at_be(std::span(header_), types::header::message_count_offset, message_count_);
-
-        return std::span(iovecs_.data(), header_slots + message_count_);
+        util::binary_io::write_at_be(std::span(header_buffer_), types::header::message_count_offset, message_count());
+        return iovecs_;
     }
 
-    std::string_view PacketBuilder::session() const noexcept
+    void PacketBuilder::reset(types::header::SequenceNumber seq) noexcept
     {
-        return std::string_view(header_.data(), sizeof(types::header::Session));
+        util::binary_io::write_at_be(std::span(header_buffer_), types::header::sequence_number_offset, seq);
+        iovecs_.resize(1); // clear messages (iovecs_[1..])
+        bytes_remaining_ = MTU_ - types::header::length;
     }
 
     types::header::MessageCount PacketBuilder::message_count() const noexcept
     {
-        return message_count_;
+        return static_cast<types::header::MessageCount>(iovecs_.size() - 1);
     }
 
-    void PacketBuilder::reset(types::header::SequenceNumber sequence_number) noexcept
+    std::string_view PacketBuilder::session() const noexcept
     {
-        // write seq
-        util::binary_io::write_at_be(std::span(header_), types::header::sequence_number_offset, sequence_number);
-
-        // no need to write message_count_ yet
-        message_count_ = 0;
-        bytes_used_ = types::header::length;
+        return std::string_view(header_buffer_.data(), sizeof(types::header::Session));
     }
 }

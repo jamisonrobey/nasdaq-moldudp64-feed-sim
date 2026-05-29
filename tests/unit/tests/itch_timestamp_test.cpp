@@ -3,15 +3,16 @@
 
 #include "itch/timestamp.h"
 
-namespace
+class ItchTimestampTest : public ::testing::Test
 {
+  protected:
     // minimum "packet" for extract timestamp is array of bytes with length 11 (timestamp offset(5) + length(6))
     using MinimumPacket = std::array<char, 11>;
-}
-
-TEST(ItchTimestamp, ReturnsCorrectValue_ByteswappingFromNetworkOrder)
-{
     MinimumPacket packet{};
+};
+
+TEST_F(ItchTimestampTest, ReturnsCorrectValue_ByteswappingFromNetworkOrder)
+{
     packet[5] = 0x00;
     packet[6] = 0x01;
     packet[7] = 0x02;
@@ -24,10 +25,8 @@ TEST(ItchTimestamp, ReturnsCorrectValue_ByteswappingFromNetworkOrder)
     EXPECT_EQ(timestamp.count(), 0x000102030405);
 }
 
-TEST(ItchTimestamp, ReturnsZero_ForZeroedPacket)
+TEST_F(ItchTimestampTest, ReturnsZero_ForZeroedPacket)
 {
-    MinimumPacket packet{};
-
     const auto timestamp{itch::extract_timestamp(std::span(packet))};
 
     EXPECT_EQ(timestamp.count(), 0);

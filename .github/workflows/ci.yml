@@ -16,7 +16,7 @@ jobs:
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
       - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build libgtest-dev
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON
+        run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON -DBUILD_INTEGRATION_TESTS=On
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
       - name: Test

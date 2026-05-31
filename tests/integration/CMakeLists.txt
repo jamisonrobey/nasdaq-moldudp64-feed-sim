@@ -1,18 +1,3 @@
-find_package(GTest 1.17.0 QUIET)
-
-if(NOT GTest_FOUND)
-    message(STATUS "GTest not found on system, fetching v1.17.0...")
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG        v1.17.0
-    )
-    FetchContent_MakeAvailable(googletest)
-else()
-    message(STATUS "Found system GTest: ${GTest_VERSION}")
-endif()
-
 add_executable(integration-tests
     tests/server_test.cpp
     tests/components/mapped_file_test.cpp

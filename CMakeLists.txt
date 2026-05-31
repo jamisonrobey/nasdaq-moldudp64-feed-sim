@@ -53,24 +53,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld)
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    include(CheckIPOSupported)
-    target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native)
-    check_ipo_supported(RESULT ipo_supported)
-    if(ipo_supported)
-        set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
-endif()
-
 if(PROJECT_IS_TOP_LEVEL)
-    option(BUILD_UNIT_TESTS        "Build unit tests"      OFF)
+    option(BUILD_UNIT_TESTS        "Build unit tests"        OFF)
     option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
+
     option(ENABLE_ASAN             "Enable AddressSanitizer" OFF)
     option(ENABLE_TSAN             "Enable ThreadSanitizer"  OFF)
+
     option(DEBUG_NO_NETWORK        "Disable network calls"   OFF)
     option(DEBUG_NO_SLEEP          "Disable sleep calls"     OFF)
 
@@ -89,17 +78,34 @@ if(PROJECT_IS_TOP_LEVEL)
     if(DEBUG_NO_NETWORK)
         target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_NETWORK)
     endif()
+
     if(DEBUG_NO_SLEEP)
         target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
     endif()
 
     if(BUILD_UNIT_TESTS OR BUILD_INTEGRATION_TESTS)
         enable_testing()
+        find_package(GTest 1.17.0 QUIET)
+        if(NOT GTest_FOUND)
+            message(STATUS "GTest not found, fetching v1.17.0...")
+            include(FetchContent)
+            FetchContent_Declare(
+                googletest
+                GIT_REPOSITORY https://github.com/google/googletest.git
+                GIT_TAG        v1.17.0
+            )
+            FetchContent_MakeAvailable(googletest)
+        else()
+            message(STATUS "Found system GTest: ${GTest_VERSION}")
+        endif()
     endif()
+
     if(BUILD_UNIT_TESTS)
         add_subdirectory(tests/unit)
     endif()
+
     if(BUILD_INTEGRATION_TESTS)
         add_subdirectory(tests/integration)
     endif()
+
 endif()

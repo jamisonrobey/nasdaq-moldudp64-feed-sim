@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imr/mold/downstream/heartbeat.h"
 #include "imr/mold/packet_builder.h"
 #include "imr/mold/retransmission_buffer.h"
 #include "imr/mold/downstream/pacer.h"
@@ -18,12 +19,16 @@ namespace imr::mold::downstream
       public:
         struct Config
         {
-            // throw invalid argument if empty or malformed
+            // required
             util::zstring_view mcast_group;
             std::uint16_t port;
+            // socket options
             std::uint8_t ttl{1};
             bool loopback{false};
-            // control pacing
+            // timing
+            std::chrono::nanoseconds heartbeat_period{std::chrono::seconds(1)};
+            std::chrono::nanoseconds end_of_session_duration{std::chrono::seconds(30)};
+            // pacing
             Pacer<std::chrono::steady_clock>::Config pacer_cfg{};
         };
 
@@ -36,23 +41,32 @@ namespace imr::mold::downstream
         void start(std::stop_token st);
 
       private:
+        using Timestamp = std::chrono::nanoseconds;
+
         util::FileDescriptor socket_;
-        sockaddr_in dest_addr_{};
+        sockaddr_in mcast_group_;
         msghdr send_hdr_{};
 
         std::span<const char> file_;
         std::size_t file_pos_{0};
-        types::header::SequenceNumber sequence_number_{1};
+        std::atomic<types::header::SequenceNumber> sequence_number_{1};
+
+        RetransmissionBuffer* retransmission_buffer_;
 
         Pacer<std::chrono::steady_clock> pacer_;
         PacketBuilder packet_builder_;
-        RetransmissionBuffer* retransmission_buffer_;
+        Heartbeat heartbeat_;
 
-        using Timestamp = std::chrono::nanoseconds;
+        std::chrono::nanoseconds end_of_session_duration_;
 
-        void configure_socket(const Config& cfg);
+        [[nodiscard]]
+        sockaddr_in configure_socket(const Config& cfg);
+
+        [[nodiscard]]
         std::optional<Timestamp> build_packet();
         void send_packet() noexcept;
         void apply_pacing(Timestamp first_msg_timestamp);
+
+        void end_of_session(std::stop_token st);
     };
 }

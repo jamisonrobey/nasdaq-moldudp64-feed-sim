@@ -21,6 +21,7 @@ target_link_libraries(integration-tests PRIVATE
 )
 target_include_directories(integration-tests PRIVATE
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/tests/common
 )
 
 include(GoogleTest)

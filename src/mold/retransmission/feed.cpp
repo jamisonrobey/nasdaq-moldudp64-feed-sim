@@ -96,9 +96,7 @@ namespace imr::mold::retransmission
         if (req_ctx)
         {
             build_packet(*req_ctx);
-#ifndef DEBUG_NO_NETWORK
             send_packet(req_ctx->client_address);
-#endif
         }
     }
 
@@ -151,8 +149,9 @@ namespace imr::mold::retransmission
         }
     }
 
-    void Feed::send_packet(const sockaddr_in& client_addr)
+    void Feed::send_packet([[maybe_unused]] const sockaddr_in& client_addr)
     {
+#ifndef DEBUG_NO_NETWORK
         std::span msg{packet_builder_.finalize()};
         if (const auto bytes_sent{sendto(socket_.get(),
                                          msg.data(),
@@ -171,10 +170,12 @@ namespace imr::mold::retransmission
                          std::source_location::current().function_name(), bytes_sent, msg.size());
 #endif
         }
+#endif
     }
 
-    void Feed::configure_socket(const Config& cfg)
+    void Feed::configure_socket([[maybe_unused]] const Config& cfg)
     {
+#ifndef DEBUG_NO_NETWORK
         constexpr auto sockopt_on{1};
         if (setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
             setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEPORT, &sockopt_on, sizeof(sockopt_on)) < 0)
@@ -218,5 +219,6 @@ namespace imr::mold::retransmission
         {
             throw std::system_error(errno, std::system_category());
         }
+#endif
     }
 }

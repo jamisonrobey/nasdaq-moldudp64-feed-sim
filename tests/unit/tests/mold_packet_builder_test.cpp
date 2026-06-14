@@ -15,7 +15,7 @@ class MoldPacketBuilderTest : public ::testing::Test
         .session = "SESSION001",
         .MTU = 100,
     };
-    static constexpr std::array<char, mold::PacketBuilder::min_message_size_totalview_itch> min_msg{};
+    static constexpr std::array<char, mold::PacketBuilder::min_message_size> min_msg{};
 
     mold::PacketBuilder builder{cfg};
 
@@ -110,7 +110,7 @@ TEST_F(MoldPacketBuilderTest, Finalize_AfterMessages_ReturnsHeaderIovecPlusOnePe
 
 TEST_F(MoldPacketBuilderTest, Finalize_AfterMessage_MessageIovecPointsToOriginalData)
 {
-    std::array<char, mold::PacketBuilder::min_message_size_totalview_itch> msg{'A', 'B', 'C'};
+    std::array<char, mold::PacketBuilder::min_message_size> msg{'A', 'B', 'C'};
     ASSERT_TRUE(builder.try_add(msg));
 
     auto packet{builder.finalize()};

@@ -7,6 +7,7 @@ add_library(${PROJECT_NAME} STATIC
     src/server.cpp
     src/mold/retransmission_buffer.cpp
     src/mold/downstream/feed.cpp
+    src/mold/downstream/heartbeat.cpp
     src/mold/retransmission/feed.cpp
     src/mold/retransmission/feed_pool.cpp
     src/itch/timestamp.cpp

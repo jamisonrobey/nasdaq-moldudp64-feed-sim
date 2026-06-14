@@ -3,6 +3,8 @@
 #include <chrono>
 #include <concepts>
 
+#include <print>
+
 namespace imr::mold::downstream
 {
     enum class MarketPhase
@@ -52,24 +54,31 @@ namespace imr::mold::downstream
 
         Pacer(const Config& cfg)
             : playback_speed_{cfg.playback_speed},
-              skip_before_{cfg.skip_before} {}
+              skip_before_{cfg.skip_before}
+        {
+            // std::println(stderr, "[pacer] speed={} skip_before={}ns", playback_speed_, skip_before_.count());
+        }
+
+        [[nodiscard]]
+        bool should_skip(std::chrono::nanoseconds packet_timestamp)
+        {
+            return packet_timestamp < skip_before_;
+        }
 
         [[nodiscard]]
         std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
         {
-            if (packet_timestamp < skip_before_)
-            {
-                return std::nullopt;
-            }
-
             if (!replay_origin_.has_value()) [[unlikely]]
             {
                 replay_origin_ = packet_timestamp;
                 wall_origin_ = Clock::now();
-                return std::chrono::nanoseconds{0};
+                // std::println(stderr, "[pacer] origin set: replay_origin={}ns", replay_origin_->count());
+                return std::nullopt;
             }
 
-            return calculate_delay(packet_timestamp);
+            const auto delay = calculate_delay(packet_timestamp);
+            // std::println(stderr, "[pacer] ts={}ns delay={}ns", packet_timestamp.count(), delay.count());
+            return delay;
         }
 
       private:

@@ -11,13 +11,12 @@
 namespace imr::mold
 {
     PacketBuilder::PacketBuilder(const Config& cfg)
-        : MTU_{cfg.MTU},
-          min_message_size_{cfg.min_message_size}
+        : MTU_{cfg.MTU}
     {
         if (MTU_ < types::header::length)
         {
-            throw std::runtime_error(std::format("{}: Config::MTU must be at least {} bytes",
-                                                 std::source_location::current().function_name(), types::header::length));
+            throw std::invalid_argument(std::format("{}: Config::MTU must be at least {} bytes",
+                                                    std::source_location::current().function_name(), types::header::length));
         }
 
         if (cfg.session.size() != sizeof(types::header::Session))
@@ -41,7 +40,7 @@ namespace imr::mold
             return false;
         }
 
-        assert(message.size() >= *min_message_size_);
+        assert(message.size() >= min_message_size_);
 
         iovecs_.emplace_back(const_cast<char*>(message.data()), message.size());
         bytes_remaining_ -= message.size();

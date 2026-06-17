@@ -16,6 +16,21 @@
 #include <print>
 #include <format>
 
+namespace
+{
+    std::optional<std::chrono::nanoseconds> peek_timestamp(std::span<const char> bytes)
+    {
+        using namespace imr;
+
+        if (bytes.size() < sizeof(mold::types::LengthPrefix) + itch::timestamp_size) [[unlikely]]
+        {
+            return std::nullopt;
+        }
+
+        return itch::extract_timestamp(bytes.subspan(sizeof(mold::types::LengthPrefix)));
+    }
+}
+
 namespace imr::mold::downstream
 {
     Feed::Feed(const Config& cfg, const PacketBuilder::Config& packet_builder_cfg, std::span<const char> file, RetransmissionBuffer& retransmission_buffer)
@@ -25,7 +40,7 @@ namespace imr::mold::downstream
           retransmission_buffer_(&retransmission_buffer),
           pacer_(cfg.pacer_cfg),
           packet_builder_{packet_builder_cfg},
-          heartbeat_(cfg.heartbeat_period, socket_.get(), mcast_group_, packet_builder_cfg.session, sequence_number_),
+          heartbeat_(cfg.heartbeat_period, socket_.get(), mcast_group_, packet_builder_cfg.session, sent_sequence_number_),
           end_of_session_duration_{cfg.end_of_session_duration}
     {
         send_hdr_.msg_name = &mcast_group_;
@@ -38,7 +53,7 @@ namespace imr::mold::downstream
 
         while (file_pos_ < file_.size() && !st.stop_requested())
         {
-            const std::optional timestamp{build_packet()};
+            std::optional timestamp{peek_timestamp(file_.subspan(file_pos_))};
 
             if (!timestamp.has_value())
             {
@@ -47,12 +62,22 @@ namespace imr::mold::downstream
 
             if (pacer_.should_skip(*timestamp))
             {
+                // eof / malformed
+                if (!io::skip_message(file_, file_pos_))
+                {
+                    break;
+                }
+
                 continue;
             }
 
-            if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value())
+            build_packet();
+
+            if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value() && delay->count() != 0)
             {
-                apply_pacing(*timestamp);
+#ifndef DEBUG_NO_SLEEP
+                std::this_thread::sleep_for(*delay);
+#endif
             }
 
             send_packet();
@@ -61,68 +86,44 @@ namespace imr::mold::downstream
         end_of_session(st);
     }
 
-    std::optional<Feed::Timestamp> Feed::build_packet()
+    void Feed::build_packet()
     {
-        packet_builder_.reset(sequence_number_.load(std::memory_order_relaxed));
-
-        std::optional<Timestamp> first_msg_timestamp;
+        packet_builder_.reset(sequence_number_);
 
         while (file_pos_ < file_.size())
         {
 
             const std::size_t msg_file_pos{file_pos_};
+
             const std::span msg{mold::io::read_message(file_, file_pos_)};
 
-            // either eof or file format wrong
             if (msg.empty()) [[unlikely]]
             {
-                return std::nullopt;
+                return;
             }
 
             // rollback when packet is full
             if (!packet_builder_.try_add(msg))
             {
                 file_pos_ = msg_file_pos;
-                break;
-            }
-
-            if (!first_msg_timestamp.has_value())
-            {
-                // bad file
-                if (file_pos_ + itch::timestamp_size < file_pos_) [[unlikely]]
-                {
-                    std::println(stderr, "file_pos_ {}, itch::timestamp_size {}", file_pos_, itch::timestamp_size);
-                    return std::nullopt;
-                }
-
-                // msg includes length prefix so skip over that for extracting timestamp
-                first_msg_timestamp = itch::extract_timestamp(msg.subspan(sizeof(types::LengthPrefix)));
+                return;
             }
 
             assert(retransmission_buffer_ != nullptr);
             retransmission_buffer_->push({
-                .sequence_number = sequence_number_.fetch_add(1, std::memory_order_relaxed),
+                .sequence_number = sequence_number_++,
                 .file_position = msg_file_pos,
             });
-        }
-
-        return (*first_msg_timestamp);
-    }
-
-    void Feed::apply_pacing(Timestamp first_msg_timestamp)
-    {
-        if ([[maybe_unused]] const std::optional delay{pacer_.get_delay(first_msg_timestamp)}; delay.has_value())
-        {
-#ifndef DEBUG_NO_SLEEP
-            std::this_thread::sleep_for(*delay);
-#endif
         }
     }
 
     void Feed::send_packet() noexcept
     {
+
         [[maybe_unused]]
         const std::span packet{packet_builder_.finalize()};
+
+        sent_sequence_number_.store(sequence_number_, std::memory_order_relaxed);
 
 #ifndef DEBUG_NO_NETWORK
         send_hdr_.msg_iov = packet.data();
@@ -151,7 +152,7 @@ namespace imr::mold::downstream
         static constexpr types::header::MessageCount eos_msg_count{std::numeric_limits<types::header::MessageCount>::max()};
         util::binary_io::write_at_be(std::span(eos_packet), pos, eos_msg_count);
 
-        util::binary_io::write_at_be(std::span(eos_packet), pos, sequence_number_.load(std::memory_order_relaxed));
+        util::binary_io::write_at_be(std::span(eos_packet), pos, sequence_number_);
 
         const auto start{std::chrono::high_resolution_clock::now()};
         const auto end{start + end_of_session_duration_};
@@ -180,19 +181,12 @@ namespace imr::mold::downstream
 #endif
     }
 
-    sockaddr_in Feed::configure_socket([[maybe_unused]] const Config& cfg)
+    sockaddr_in Feed::configure_socket([[maybe_unused]] const Config& cfg) const
     {
         constexpr auto sockopt_on{1};
         if (setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
             setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_TTL, &cfg.ttl, sizeof(cfg.ttl)) < 0)
         {
-            throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
-        }
-
-        const auto loopback_opt{static_cast<int>(cfg.loopback)};
-        if (setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &loopback_opt, sizeof(loopback_opt)) < 0)
-        {
-
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
 
@@ -207,6 +201,16 @@ namespace imr::mold::downstream
         else if (ret < 0)
         {
             throw std::system_error(errno, std::system_category());
+        }
+
+        if (!cfg.loopback)
+        {
+            return mcast_group;
+        }
+
+        if (setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &sockopt_on, sizeof(sockopt_on)) < 0)
+        {
+            throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
 
         return mcast_group;

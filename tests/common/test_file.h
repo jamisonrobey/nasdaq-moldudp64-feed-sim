@@ -14,10 +14,14 @@ namespace test_common
     using namespace imr;
 
     constexpr auto min_message_size{mold::PacketBuilder::min_message_size};
+    // Body size = total - 2-byte length prefix
+    constexpr mold::types::LengthPrefix itch_min_body_size{min_message_size -
+                                                           static_cast<std::uint16_t>(sizeof(mold::types::LengthPrefix))};
 
     consteval void write_len_prefix(std::span<char> message)
     {
-        const auto bytes{std::bit_cast<std::array<char, sizeof(mold::types::LengthPrefix)>>(std::byteswap(min_message_size))};
+        const auto bytes{std::bit_cast<std::array<char, sizeof(mold::types::LengthPrefix)>>(
+            std::byteswap(itch_min_body_size))}; // was: min_message_size
         std::ranges::copy(bytes, message.begin());
     }
 

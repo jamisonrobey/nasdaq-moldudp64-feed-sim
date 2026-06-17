@@ -4,6 +4,7 @@
 #include "imr/mold/types.h"
 
 #include <cassert>
+#include <print>
 #include <source_location>
 #include <stdexcept>
 #include <format>
@@ -26,7 +27,7 @@ namespace imr::mold
         }
 
         // + 1 for header
-        iovecs_.reserve(1 + (MTU_ / cfg.min_message_size));
+        iovecs_.reserve(1 + (MTU_ / min_message_size));
 
         util::binary_io::write_at(std::span(header_buffer_), 0, cfg.session);
         iovecs_.emplace_back(header_buffer_.data(), header_buffer_.size());
@@ -40,7 +41,7 @@ namespace imr::mold
             return false;
         }
 
-        assert(message.size() >= min_message_size_);
+        assert(message.size() >= min_message_size);
 
         iovecs_.emplace_back(const_cast<char*>(message.data()), message.size());
         bytes_remaining_ -= message.size();

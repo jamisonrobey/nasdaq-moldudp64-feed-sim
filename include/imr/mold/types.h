@@ -16,7 +16,7 @@ namespace imr::mold::types
         using MessageCount = std::uint16_t;
         inline constexpr std::size_t message_count_offset{sizeof(Session) + sizeof(SequenceNumber)};
 
-        inline constexpr auto length{sizeof(Session) + sizeof(SequenceNumber) + sizeof(MessageCount)};
+        inline constexpr std::size_t length{sizeof(Session) + sizeof(SequenceNumber) + sizeof(MessageCount)};
     }
 
     using LengthPrefix = std::uint16_t;

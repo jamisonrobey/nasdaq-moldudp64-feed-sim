@@ -5,6 +5,7 @@
 #include "imr/mold/retransmission_buffer.h"
 #include "imr/mold/downstream/pacer.h"
 
+#include "imr/mold/types.h"
 #include "imr/util/file_descriptor.h"
 #include "imr/util/zstring_view.h"
 
@@ -41,15 +42,14 @@ namespace imr::mold::downstream
         void start(std::stop_token st);
 
       private:
-        using Timestamp = std::chrono::nanoseconds;
-
         util::FileDescriptor socket_;
         sockaddr_in mcast_group_;
         msghdr send_hdr_{};
 
         std::span<const char> file_;
         std::size_t file_pos_{0};
-        std::atomic<types::header::SequenceNumber> sequence_number_{1};
+        types::header::SequenceNumber sequence_number_{1};
+        std::atomic<types::header::SequenceNumber> sent_sequence_number_{1};
 
         RetransmissionBuffer* retransmission_buffer_;
 
@@ -60,12 +60,10 @@ namespace imr::mold::downstream
         std::chrono::nanoseconds end_of_session_duration_;
 
         [[nodiscard]]
-        sockaddr_in configure_socket(const Config& cfg);
+        sockaddr_in configure_socket(const Config& cfg) const;
 
-        [[nodiscard]]
-        std::optional<Timestamp> build_packet();
+        void build_packet();
         void send_packet() noexcept;
-        void apply_pacing(Timestamp first_msg_timestamp);
 
         void end_of_session(std::stop_token st);
     };

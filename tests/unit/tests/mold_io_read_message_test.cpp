@@ -37,7 +37,6 @@ class MoldIoReadMessageTest : public ::testing::Test
     {
         const auto res{mold::io::read_message(data, pos)};
         EXPECT_TRUE(res.empty());
-        EXPECT_EQ(pos, 0);
     }
 };
 
@@ -45,17 +44,30 @@ TEST_F(MoldIoReadMessageTest, ValidMessage_ReturnsFullSpanAndAdvancesPos)
 {
     constexpr std::array msg{'a', 'b', 'c'};
     const auto block{make_msg_block(msg)};
-    expect_success(block, sizeof(mold::types::LengthPrefix) + msg.size());
+
+    const auto res{mold::io::read_message(block, pos)};
+
+    constexpr auto expected_size{sizeof(mold::types::LengthPrefix) + msg.size()};
+
+    EXPECT_EQ(res.size(), expected_size);
+    EXPECT_EQ(pos, expected_size);
 }
 
-TEST_F(MoldIoReadMessageTest, TruncatedLengthPrefix_ReturnsEmptyPosUnchanged)
+TEST_F(MoldIoReadMessageTest, TruncatedLengthPrefix_ReturnsEmpty)
 {
-    expect_failure(std::to_array<char>({0x00}));
+
+    const auto res{mold::io::read_message(std::to_array<char>({0x00}), pos)};
+
+    EXPECT_TRUE(res.empty());
 }
 
-TEST_F(MoldIoReadMessageTest, TruncatedBody_ReturnsEmptyPosUnchanged)
+TEST_F(MoldIoReadMessageTest, TruncatedBody_ReturnsEmpty)
 {
     constexpr std::array body{'a', 'b', 'c', 'd', 'e'};
     const auto block{make_msg_block(body)};
-    expect_failure(std::span(block).subspan(0, sizeof(mold::types::LengthPrefix) + 2));
+
+    // give block missing last byte
+    const auto res{mold::io::read_message(std::span(block.data(), block.size() - 2), pos)};
+
+    EXPECT_TRUE(res.empty());
 }

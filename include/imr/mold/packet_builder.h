@@ -29,8 +29,6 @@ namespace imr::mold
             std::string_view session;
             // must be >= types::header::length (20 bytes) or throws std::invalid_argument
             std::size_t MTU{1472};
-            // minimum size of message to be passed to try_add()
-            std::size_t min_message_size{PacketBuilder::min_message_size};
         };
 
         explicit PacketBuilder(const Config& cfg);
@@ -53,7 +51,6 @@ namespace imr::mold
       private:
         std::size_t MTU_;
         std::size_t bytes_remaining_;
-        std::size_t min_message_size_;
 
         std::array<char, types::header::length> header_buffer_{};
         // [0] = header (*iov_base = header_buffer_), [1..N] = messages

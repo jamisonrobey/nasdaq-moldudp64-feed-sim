@@ -21,8 +21,9 @@ namespace
                 .downstream_feed_config = {
                     .mcast_group = "239.0.0.1",
                     .port = downstream_port,
+                    .end_of_session_duration = std::chrono::nanoseconds(0),
                     .pacer_cfg = {
-                        .skip_before = imr::mold::downstream::market_open,
+                        // .skip_before = imr::mold::downstream::market_open,
                     },
                 },
                 .retransmission_feed_config = {

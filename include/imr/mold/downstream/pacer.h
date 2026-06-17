@@ -64,21 +64,21 @@ namespace imr::mold::downstream
         {
             return packet_timestamp < skip_before_;
         }
-
         [[nodiscard]]
         std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
         {
-            if (!replay_origin_.has_value()) [[unlikely]]
+            if (!replay_origin_.has_value())
             {
                 replay_origin_ = packet_timestamp;
                 wall_origin_ = Clock::now();
-                // std::println(stderr, "[pacer] origin set: replay_origin={}ns", replay_origin_->count());
+            }
+
+            if (should_skip(packet_timestamp))
+            {
                 return std::nullopt;
             }
 
-            const auto delay = calculate_delay(packet_timestamp);
-            // std::println(stderr, "[pacer] ts={}ns delay={}ns", packet_timestamp.count(), delay.count());
-            return delay;
+            return calculate_delay(packet_timestamp);
         }
 
       private:

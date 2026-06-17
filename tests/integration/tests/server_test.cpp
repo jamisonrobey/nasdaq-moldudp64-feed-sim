@@ -6,7 +6,7 @@
 
 namespace
 {
-    class ServerTest : public test_common::TestFileFixture<1024>
+    class ServerTest : public test_common::ItchFileFixture<1024>
     {
       protected:
         static std::unique_ptr<imr::Server> make_test_server(std::uint16_t downstream_port, std::uint16_t retransmission_port)

@@ -5,12 +5,7 @@ add_executable(integration-tests
     tests/components/retransmission_feed_test.cpp
 )
 
-configure_file(
-    data/mmap_test_file.txt
-    ${CMAKE_CURRENT_BINARY_DIR}/mmap_test_file.txt
-    COPYONLY
-)
-
+# todo : probably put this in common somehow just cmake copy into this (does add dir do this ? chekc later )
 target_compile_definitions(integration-tests PRIVATE
     TEST_DATA_DIR="${CMAKE_CURRENT_BINARY_DIR}"
 )

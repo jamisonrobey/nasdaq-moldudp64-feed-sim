@@ -18,7 +18,8 @@ namespace
 }
 
 using namespace std::chrono_literals;
-using ns = std::chrono::nanoseconds;
+
+using namespace std::chrono_literals;
 using namespace imr::mold::downstream;
 
 class MoldDownstreamPacerTest : public ::testing::Test
@@ -26,10 +27,10 @@ class MoldDownstreamPacerTest : public ::testing::Test
   protected:
     void SetUp() override
     {
-        MockClock::current_time = MockClock::time_point{ns(0)};
+        MockClock::current_time = MockClock::time_point{0ns};
     }
 
-    std::optional<ns> two_packet_delay(double speed, ns first_time, ns second_time, ns clock_at_second)
+    std::optional<std::chrono::nanoseconds> two_packet_delay(double speed, std::chrono::nanoseconds first_time, std::chrono::nanoseconds second_time, std::chrono::nanoseconds clock_at_second)
     {
         Pacer<MockClock> pacer({.playback_speed = speed});
         EXPECT_TRUE(pacer.get_delay(first_time).has_value());
@@ -42,7 +43,8 @@ TEST_F(MoldDownstreamPacerTest, GetDelay_ReturnsNullopt_ForPacketBeforeIgnoreThr
 {
     const auto threshold{phase_to_ns(MarketPhase::open)};
     Pacer<MockClock> pacer({.skip_before = threshold});
-    EXPECT_FALSE(pacer.get_delay(threshold - ns(1)).has_value());
+    using namespace std::chrono_literals;
+    EXPECT_FALSE(pacer.get_delay(threshold - 1ns).has_value());
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_ProcessesPacket_AtExactIgnoreThreshold)
@@ -58,40 +60,42 @@ TEST_F(MoldDownstreamPacerTest, GetDelay_ReturnsZeroDelay_ForFirstValidPacket)
     Pacer<MockClock> pacer({.skip_before = threshold});
     const auto result{pacer.get_delay(threshold)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(0));
+    EXPECT_EQ(*result, 0ns);
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_ReturnsZeroDelay_WhenScheduledTimeHasPassed)
 {
-    const auto result{two_packet_delay(1.0, ns(0), ns(500), ns(600))};
+    const auto result{two_packet_delay(1.0, 0ns, 500ns, 600ns)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(0));
+    EXPECT_EQ(*result, 0ns);
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_ReturnsZeroDelay_WhenScheduledTimeIsExactlyNow)
 {
-    const auto result{two_packet_delay(1.0, ns(0), ns(500), ns(500))};
+    const auto result{two_packet_delay(1.0, 0ns, 500ns, 500ns)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(0));
+    EXPECT_EQ(*result, 0ns);
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_ReturnsPositiveDelay_WhenScheduledTimeIsInFuture)
 {
-    const auto result{two_packet_delay(1.0, ns(0), ns(1000), ns(200))};
+    const auto result{two_packet_delay(1.0, 0ns, 1000ns, 200ns)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(800));
+    EXPECT_EQ(*result, 800ns);
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_HalfPlaybackSpeed_DoublesDelay)
 {
-    const auto result{two_packet_delay(0.5, ns(0), ns(1000), ns(200))};
+    using namespace std::chrono_literals;
+
+    const auto result{two_packet_delay(0.5, 0ns, 1000ns, 200ns)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(1800));
+    EXPECT_EQ(*result, 1800ns);
 }
 
 TEST_F(MoldDownstreamPacerTest, GetDelay_DoublePlaybackSpeed_HalvesDelay)
 {
-    const auto result{two_packet_delay(2.0, ns(0), ns(1000), ns(200))};
+    const auto result{two_packet_delay(2.0, 0ns, 1000ns, 200ns)};
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(*result, ns(300));
+    EXPECT_EQ(*result, 300ns);
 }

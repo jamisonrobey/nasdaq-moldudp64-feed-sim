@@ -1,6 +1,7 @@
 #include "imr/mold/downstream/heartbeat.h"
 
 #include "imr/mold/types.h"
+#include "imr/util/log.h"
 #include "util/binary_io.h"
 #include <stop_token>
 
@@ -20,10 +21,14 @@ namespace imr::mold::downstream
         std::span packet_span(packet_);
         util::binary_io::write_at(packet_span, types::header::session_offset, session);
         util::binary_io::write_at_be(packet_span, types::header::message_count_offset, types::header::MessageCount{0});
+
+        util::log::debug();
     }
 
     void Heartbeat::start(std::stop_token st)
     {
+        util::log::info("Hearbeat started");
+
         thread_ = std::jthread([this, st]() {
             while (!st.stop_requested())
             {
@@ -31,6 +36,8 @@ namespace imr::mold::downstream
                 if (!st.stop_requested())
                 {
                     send();
+
+                    util::log::debug();
                 }
             }
         });
@@ -54,7 +61,7 @@ namespace imr::mold::downstream
                    reinterpret_cast<const sockaddr*>(&mcast_group_),
                    sizeof(mcast_group_)) < 0)
         {
-            std::perror("heartbeat sendto");
+            util::log::perror();
         }
     }
 

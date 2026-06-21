@@ -1,64 +1,54 @@
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <test_file_fixture.h>
 
 #include <imr/server.h>
 
 namespace
 {
-    class ServerTest : public test_common::ItchFileFixture<1024>
-    {
-      protected:
-        static std::unique_ptr<imr::Server> make_test_server(std::uint16_t downstream_port, std::uint16_t retransmission_port)
-        {
-            std::expected result{imr::make_server(imr::Server::Config{
-                .mapped_itch_file_cfg = {
-                    .path = test_path,
-                },
-                .packet_builder_cfg = {
-                    .session = "SESSION001",
-                },
-                .downstream_feed_config = {
-                    .mcast_group = "239.0.0.1",
-                    .port = downstream_port,
-                    .end_of_session_duration = std::chrono::nanoseconds(0),
-                    .pacer_cfg = {
-                        // .skip_before = imr::mold::downstream::market_open,
-                    },
-                },
-                .retransmission_feed_config = {
-                    .address = "127.0.0.1",
-                    .port = retransmission_port,
-                },
-            })};
-
-            EXPECT_TRUE(result.has_value()) << std::format("Error during server construction: {}", result.error());
-
-            return std::move(*result);
-        }
+    imr::Server::Config config{
+        .packet_builder_cfg =
+            {
+                .session = "SESSION001",
+            },
+        .downstream_feed_config =
+            {
+                .mcast_group = "239.0.0.1",
+                .end_of_session_duration = std::chrono::seconds(0),
+            },
+        .retransmission_feed_config =
+            {
+                .address = "127.0.0.1",
+            },
     };
+
 }
 
-TEST_F(ServerTest, Start_RunToEOF)
+class ServerIntegrationTest : public test_common::ItchFileFixture<1024>
 {
-    const std::unique_ptr<imr::Server> server{make_test_server(3400, 3500)};
+};
+
+TEST_F(ServerIntegrationTest, Start_RunToEOF)
+{
+    const std::unique_ptr<imr::Server> server{make_test_server(config)};
 
     server->start();
     server->wait_for_downstream();
 }
 
-TEST_F(ServerTest, Stop_WhileRunning)
+TEST_F(ServerIntegrationTest, Stop_WhileRunning)
 {
 
-    const std::unique_ptr<imr::Server> server{make_test_server(4400, 4500)};
+    const std::unique_ptr<imr::Server> server{make_test_server(config)};
 
     server->start();
     server->stop();
 }
 
-TEST_F(ServerTest, Stop_AfterEOF)
+TEST_F(ServerIntegrationTest, Stop_AfterEOF)
 {
-    const std::unique_ptr<imr::Server> server{make_test_server(5400, 5500)};
+    const std::unique_ptr<imr::Server> server{make_test_server(config)};
 
     server->start();
     server->wait_for_downstream();

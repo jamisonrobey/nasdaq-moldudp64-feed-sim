@@ -1,4 +1,5 @@
 #include "imr/mold/retransmission/feed_pool.h"
+#include "imr/util/log.h"
 
 #include <unistd.h>
 
@@ -18,7 +19,11 @@ namespace imr::mold::retransmission
                 Feed feed(feed_cfg_, packet_builder_cfg_, retransmission_buffer, shutdown_fd_.get());
                 feed.start();
             });
+
+            util::log::info("Started retransmission thread {} of {}", i + 1, num_feeds);
         }
+
+        util::log::debug();
     }
 
     void FeedPool::stop() const
@@ -28,5 +33,7 @@ namespace imr::mold::retransmission
         {
             throw std::system_error(errno, std::system_category());
         }
+
+        util::log::debug();
     }
 };

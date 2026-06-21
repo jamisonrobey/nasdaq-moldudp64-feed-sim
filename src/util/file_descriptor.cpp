@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <utility>
 #include <unistd.h>
+#include <format>
 
 namespace imr::util
 {
@@ -30,15 +31,16 @@ namespace imr::util
         const int fd{open(path.c_str(), flags)};
         if (fd < 0)
         {
-            throw std::system_error(errno, std::system_category(),
-                                    std::format("{} failed to open file", std::source_location::current().function_name()));
+            throw std::system_error(errno, std::system_category(), std::format("{} failed to open file", std::source_location::current().function_name()));
         }
 
         fd_ = fd;
     }
 
     FileDescriptor::FileDescriptor(FileDescriptor&& other) noexcept
-        : fd_{std::exchange(other.fd_, -1)} {}
+        : fd_{std::exchange(other.fd_, -1)}
+    {
+    }
 
     FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other) noexcept
     {

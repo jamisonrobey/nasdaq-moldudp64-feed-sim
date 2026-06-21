@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imr/server.h"
 #include <gtest/gtest.h>
 #include <imr/mold/types.h>
 #include <imr/mold/packet_builder.h>
@@ -7,7 +8,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <string_view>
+
 #include <span>
 #include <chrono>
 #include <algorithm>
@@ -20,18 +21,39 @@ namespace test_common
     class TestFileFixture : public ::testing::Test
     {
       protected:
+        static std::filesystem::path test_path()
+        {
+            return std::filesystem::path(TEST_DATA_DIR) / Derived::file_name();
+        }
+
         static void SetUpTestSuite()
         {
-            std::ofstream out(std::filesystem::path(Derived::test_path), std::ios::binary | std::ios::trunc);
-            ASSERT_TRUE(out) << "Failed to create temporary test file: " << Derived::test_path;
-
+            std::ofstream out(test_path(), std::ios::binary | std::ios::trunc);
+            ASSERT_TRUE(out) << "Failed to create temporary test file: " << test_path();
             const auto content{Derived::get_test_content()};
-            out.write(reinterpret_cast<const char*>(content.data()), content.size());
+            out.write(content.data(), content.size());
         }
 
         static void TearDownTestSuite()
         {
-            std::filesystem::remove(Derived::test_path);
+            std::filesystem::remove(test_path());
+        }
+
+        // make similar servers with diff ports
+        static std::unique_ptr<imr::Server> make_test_server(imr::Server::Config& config)
+        {
+            static std::atomic<std::uint16_t> downstream_port{3400};
+            static std::atomic<std::uint16_t> retransmission_port{3500};
+
+            config.mapped_itch_file_cfg.path = test_path();
+            config.downstream_feed_config.port = downstream_port.fetch_add(1, std::memory_order_relaxed);
+            config.retransmission_feed_config.port = retransmission_port.fetch_add(1, std::memory_order_relaxed);
+
+            std::expected result{imr::make_server(config)};
+
+            EXPECT_TRUE(result.has_value()) << std::format("Error during server construction: {}", result.error());
+
+            return std::move(*result);
         }
     };
 
@@ -39,7 +61,10 @@ namespace test_common
     class ItchFileFixture : public TestFileFixture<ItchFileFixture<NumMessages, TimestampIncrementNs>>
     {
       public:
-        static constexpr std::string_view test_path{TEST_DATA_DIR "/test_file"};
+        static constexpr std::string_view file_name()
+        {
+            return "itch_test_file";
+        }
 
         static consteval auto get_test_content()
         {
@@ -61,8 +86,8 @@ namespace test_common
       private:
         static constexpr auto min_message_size{imr::mold::PacketBuilder::min_message_size};
 
-        static constexpr imr::mold::types::LengthPrefix itch_min_body_size{
-            min_message_size - static_cast<std::uint16_t>(sizeof(imr::mold::types::LengthPrefix))};
+        static constexpr imr::mold::types::LengthPrefix itch_min_body_size{min_message_size -
+                                                                           sizeof(imr::mold::types::LengthPrefix)};
 
         static consteval void write_len_prefix(std::span<char> message)
         {

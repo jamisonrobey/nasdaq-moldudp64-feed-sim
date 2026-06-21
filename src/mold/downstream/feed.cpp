@@ -3,6 +3,7 @@
 #include "../io.h"
 #include "../../itch/timestamp.h"
 #include "imr/mold/types.h"
+#include "imr/util/log.h"
 #include "util/binary_io.h"
 
 #include <atomic>
@@ -13,7 +14,6 @@
 #include <arpa/inet.h>
 #include <stop_token>
 #include <thread>
-#include <print>
 #include <format>
 
 namespace
@@ -33,7 +33,10 @@ namespace
 
 namespace imr::mold::downstream
 {
-    Feed::Feed(const Config& cfg, const PacketBuilder::Config& packet_builder_cfg, std::span<const char> file, RetransmissionBuffer& retransmission_buffer)
+    Feed::Feed(const Config& cfg,
+               const PacketBuilder::Config& packet_builder_cfg,
+               std::span<const char> file,
+               RetransmissionBuffer& retransmission_buffer)
         : socket_{socket(AF_INET, SOCK_DGRAM, 0)},
           mcast_group_{configure_socket(cfg)},
           file_(file),
@@ -45,10 +48,14 @@ namespace imr::mold::downstream
     {
         send_hdr_.msg_name = &mcast_group_;
         send_hdr_.msg_namelen = sizeof(mcast_group_);
+
+        util::log::debug();
     }
 
     void Feed::start(std::stop_token st)
     {
+        util::log::info("Downstream feed: started");
+
         heartbeat_.start(st);
 
         while (file_pos_ < file_.size() && !st.stop_requested())
@@ -73,8 +80,9 @@ namespace imr::mold::downstream
 
             build_packet();
 
-            if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value() && delay->count() != 0)
+            if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value())
             {
+                util::log::debug("Downstream feed delaying: {}ns", *delay);
 #ifndef DEBUG_NO_SLEEP
                 std::this_thread::sleep_for(*delay);
 #endif
@@ -84,6 +92,8 @@ namespace imr::mold::downstream
         }
 
         end_of_session(st);
+
+        util::log::info("Downstream feed: finished");
     }
 
     void Feed::build_packet()
@@ -131,7 +141,7 @@ namespace imr::mold::downstream
 
         if (const auto bytes_sent{sendmsg(socket_.get(), &send_hdr_, 0)}; bytes_sent < 0)
         {
-            std::perror("downstream sendto");
+            util::log::perror();
         }
         // todo: fix this condition because iovec size doesnt = the packet sent size
         else if (static_cast<std::size_t>(bytes_sent) != packet.size())
@@ -143,6 +153,8 @@ namespace imr::mold::downstream
 
     void Feed::end_of_session([[maybe_unused]] std::stop_token st)
     {
+        util::log::debug("Downstream feed: end of session");
+
 #ifndef DEBUG_NO_NETWORK
         std::array<char, types::header::length> eos_packet{};
 
@@ -167,12 +179,18 @@ namespace imr::mold::downstream
                                              sizeof(mcast_group_))};
                 bytes_sent < 0)
             {
-                std::perror("downstream sendto");
+                util::log::perror();
             }
             else if (static_cast<std::size_t>(bytes_sent) < eos_packet.size())
             {
-                std::println(stderr, "sendto: only sent {} of {} bytes", bytes_sent, eos_packet.size());
+
+                util::log::error("{}: only sent {} of {} bytes",
+                                 std::source_location::current().function_name(),
+                                 bytes_sent,
+                                 eos_packet.size());
             }
+
+            util::log::debug();
 
 #ifndef DEBUG_NO_SLEEP
             std::this_thread::sleep_for(heartbeat_.period());
@@ -212,6 +230,8 @@ namespace imr::mold::downstream
         {
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
+
+        util::log::debug();
 
         return mcast_group;
     }

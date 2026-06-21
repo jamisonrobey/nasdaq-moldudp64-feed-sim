@@ -54,9 +54,14 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
+set(IMR_LOG_LEVEL "0" CACHE STRING "IMR log level: 0=error 1=warn 2=info 3=debug")
+set_property(CACHE IMR_LOG_LEVEL PROPERTY STRINGS "0;1;2;3")
+target_compile_definitions(${PROJECT_NAME} PRIVATE IMR_LOG_LEVEL=${IMR_LOG_LEVEL})
+
 if(PROJECT_IS_TOP_LEVEL)
     option(BUILD_UNIT_TESTS        "Build unit tests"        OFF)
     option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
+    option(BUILD_E2E_TESTS         "Build end to end tests"  OFF)
 
     option(ENABLE_ASAN             "Enable AddressSanitizer" OFF)
     option(ENABLE_TSAN             "Enable ThreadSanitizer"  OFF)
@@ -74,6 +79,21 @@ if(PROJECT_IS_TOP_LEVEL)
     elseif(ENABLE_TSAN)
         target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
         target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=thread)
+
+        # false positives if using libstdc++ w/ clang++ in <print>.
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            # add_compile_options()/add_link_options() below are directory-scoped
+            # and only apply to targets created *after* this point — fine for the
+            # test executables and FetchContent's GTest (both created later in
+            # this file), but ${PROJECT_NAME} was already created above, so it
+            # needs the flag set directly here or it silently keeps using the
+            # default libstdc++.
+            target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++)
+            target_link_options(${PROJECT_NAME} PUBLIC -stdlib=libc++)
+
+            add_compile_options(-stdlib=libc++)
+            add_link_options(-stdlib=libc++)
+        endif()
     endif()
 
     if(DEBUG_NO_NETWORK)
@@ -84,11 +104,22 @@ if(PROJECT_IS_TOP_LEVEL)
         target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_NO_SLEEP)
     endif()
 
-    if(BUILD_UNIT_TESTS OR BUILD_INTEGRATION_TESTS)
+    if(BUILD_UNIT_TESTS OR BUILD_INTEGRATION_TESTS OR BUILD_E2E_TESTS)
         enable_testing()
-        find_package(GTest 1.17.0 QUIET)
+
+        set(_imr_skip_system_gtest FALSE)
+        # System-installed GTest is usually compiled with libstdc++, which won't
+        # link against libc++-built code (see the TSan/Clang block above).
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND ENABLE_TSAN)
+            set(_imr_skip_system_gtest TRUE)
+        endif()
+
+        if(NOT _imr_skip_system_gtest)
+            find_package(GTest 1.17.0 QUIET)
+        endif()
+
         if(NOT GTest_FOUND)
-            message(STATUS "GTest not found, fetching v1.17.0...")
+            message(STATUS "Fetching GTest v1.17.0 from source...")
             include(FetchContent)
             FetchContent_Declare(
                 googletest
@@ -99,6 +130,8 @@ if(PROJECT_IS_TOP_LEVEL)
         else()
             message(STATUS "Found system GTest: ${GTest_VERSION}")
         endif()
+
+        add_subdirectory(tests/common)
     endif()
 
     if(BUILD_UNIT_TESTS)
@@ -109,4 +142,7 @@ if(PROJECT_IS_TOP_LEVEL)
         add_subdirectory(tests/integration)
     endif()
 
+    if(BUILD_E2E_TESTS)
+        add_subdirectory(tests/e2e)
+    endif()
 endif()

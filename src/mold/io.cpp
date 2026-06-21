@@ -3,7 +3,8 @@
 #include "../util/binary_io.h"
 
 #include "imr/mold/types.h"
-#include <print>
+#include "imr/util/log.h"
+
 #include <source_location>
 
 namespace
@@ -22,11 +23,11 @@ namespace
         if (pos + length_prefix > bytes.size())
         {
 #ifndef NDEBUG
-            std::println(stderr, "{}: length_prefix {} overruns EOF (file position {}, file size {})",
-                         std::source_location::current().function_name(),
-                         length_prefix,
-                         pos,
-                         bytes.size());
+            imr::util::log::error("{}: length_prefix {} overruns EOF (file position {}, file size {})",
+                                  std::source_location::current().function_name(),
+                                  length_prefix,
+                                  pos,
+                                  bytes.size());
 #endif
             return std::nullopt;
         }
@@ -43,6 +44,7 @@ namespace imr::mold::io
 
         if (std::optional length_prefix{get_and_check_length_prefix(bytes, pos)}; length_prefix.has_value())
         {
+            // this is noexcept on g++ and  clang
             static_assert(noexcept(std::span<const char>{}.subspan(0uz, 0uz)), ".subspan() must be implemented as noexcept");
             return bytes.subspan(start, sizeof(types::LengthPrefix) + *length_prefix);
         }

@@ -16,20 +16,25 @@ namespace
     class MemoryMappedFileTest : public test_common::TestFileFixture<MemoryMappedFileTest>
     {
       public:
-        static constexpr std::string_view test_path{TEST_DATA_DIR "/mmap_test_text_file.txt"};
-        static constexpr std::string_view expected_content{"hello mmap file"};
+        static constexpr std::string_view file_name()
+        {
+            return "mmap_test_text_file.txt";
+        }
 
         static constexpr std::string_view get_test_content()
         {
             return expected_content;
         }
+
+      protected:
+        static constexpr std::string_view expected_content{"hello mmap file"};
     };
 }
 
 TEST_F(MemoryMappedFileTest, Ctor_MinimalConfig_VerifyContents)
 {
     MemoryMappedFile file({
-        .path = test_path,
+        .path = test_path(),
     });
 
     const auto file_span{file.as_span()};
@@ -43,11 +48,12 @@ TEST_F(MemoryMappedFileTest, Ctor_MinimalConfig_VerifyContents)
 TEST_F(MemoryMappedFileTest, Ctor_FullConfig_VerifyContents)
 {
     MemoryMappedFile file({
-        .path = test_path,
+        .path = test_path(),
         .mmap_flags = MAP_POPULATE,
         .offset = 0,
         .madvise_flags = MADV_SEQUENTIAL,
     });
+
     const auto file_span{file.as_span()};
 
     ASSERT_EQ(file.as_span().size(), expected_content.size());

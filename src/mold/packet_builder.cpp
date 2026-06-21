@@ -4,7 +4,6 @@
 #include "imr/mold/types.h"
 
 #include <cassert>
-#include <print>
 #include <source_location>
 #include <stdexcept>
 #include <format>
@@ -17,7 +16,8 @@ namespace imr::mold
         if (MTU_ < types::header::length)
         {
             throw std::invalid_argument(std::format("{}: Config::MTU must be at least {} bytes",
-                                                    std::source_location::current().function_name(), types::header::length));
+                                                    std::source_location::current().function_name(),
+                                                    types::header::length));
         }
 
         if (cfg.session.size() != sizeof(types::header::Session))

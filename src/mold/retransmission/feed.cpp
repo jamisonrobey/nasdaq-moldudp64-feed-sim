@@ -4,6 +4,7 @@
 
 #include "../../util/binary_io.h"
 #include "../io.h"
+#include "imr/util/log.h"
 
 #include <arpa/inet.h>
 #include <source_location>
@@ -11,7 +12,6 @@
 #include <format>
 #include <source_location>
 #include <system_error>
-#include <print>
 
 namespace imr::mold::retransmission
 {
@@ -26,13 +26,19 @@ namespace imr::mold::retransmission
         // 0 is stdin so will EPERM w/ epoll
         if (shutdown_fd_ <= 0)
         {
-            throw std::invalid_argument(std::format("{} invalid shutdown_fd {}", std::source_location::current().function_name(), shutdown_fd_));
+            throw std::invalid_argument(std::format("{} invalid shutdown_fd {}",
+                                                    std::source_location::current().function_name(),
+                                                    shutdown_fd_));
         }
         configure_socket(cfg);
+
+        util::log::debug();
     }
 
     void Feed::start()
     {
+        util::log::info("Retransmission feed: started");
+
         auto should_stop{false};
         while (!should_stop)
         {
@@ -44,7 +50,8 @@ namespace imr::mold::retransmission
                 {
                     continue;
                 }
-                std::perror("epoll_wait");
+
+                util::log::perror();
             }
 
             for (auto i{0UZ}; i < static_cast<std::size_t>(nfds); ++i)
@@ -54,6 +61,8 @@ namespace imr::mold::retransmission
                 if (event.data.fd == shutdown_fd_)
                 {
                     should_stop = true;
+
+                    util::log::info("Retransmission feed: shutdown received");
                     break;
                 }
 
@@ -82,7 +91,7 @@ namespace imr::mold::retransmission
             if (errno != EWOULDBLOCK)
             {
 
-                std::perror("recvfrom");
+                util::log::perror();
             }
             return;
         }
@@ -107,6 +116,7 @@ namespace imr::mold::retransmission
         std::string_view recv_session(recv_buffer_.data(), session_offset);
         if (recv_session != packet_builder_.session())
         {
+            util::log::debug("Retransmission feed: bad request");
             return std::nullopt;
         }
 
@@ -117,6 +127,7 @@ namespace imr::mold::retransmission
         const std::optional file_pos{retransmission_buffer_->file_position_for(req_ctx.starting_sequence)};
         if (!file_pos)
         {
+            util::log::debug("Retransmission feed: requested sequence_number out of range");
             return std::nullopt;
         }
 
@@ -135,15 +146,16 @@ namespace imr::mold::retransmission
 
         for (auto i{0UZ}; i < req_ctx.msg_count; ++i)
         {
-            const std::optional msg{io::read_message(file_, file_pos)};
-            if (!msg) [[unlikely]]
+            const std::span msg{io::read_message(file_, file_pos)};
+            // eof / bad file
+            if (msg.empty()) [[unlikely]]
             {
                 break;
             }
 
-            if (!packet_builder_.try_add(*msg))
+            // packet full before msg_count
+            if (!packet_builder_.try_add(msg))
             {
-                // packet full before msg_count
                 break;
             }
         }
@@ -153,21 +165,19 @@ namespace imr::mold::retransmission
     {
 #ifndef DEBUG_NO_NETWORK
         std::span msg{packet_builder_.finalize()};
-        if (const auto bytes_sent{sendto(socket_.get(),
-                                         msg.data(),
-                                         msg.size(),
-                                         0,
-                                         reinterpret_cast<const sockaddr*>(&client_addr),
-                                         sizeof(client_addr))};
+        if (const auto bytes_sent{sendto(
+                socket_.get(), msg.data(), msg.size(), 0, reinterpret_cast<const sockaddr*>(&client_addr), sizeof(client_addr))};
             bytes_sent < 0)
         {
-            std::perror("sendto");
+            util::log::perror();
         }
         else if (static_cast<std::size_t>(bytes_sent) != msg.size())
         {
 #ifndef NDEBUG
-            std::println(stderr, "{} sendto: only sent {} of {} bytes",
-                         std::source_location::current().function_name(), bytes_sent, msg.size());
+            util::log::error("{} sendto: only sent {} of {} bytes",
+                             std::source_location::current().function_name(),
+                             bytes_sent,
+                             msg.size());
 #endif
         }
 #endif
@@ -194,13 +204,15 @@ namespace imr::mold::retransmission
         }
         else if (ret < 0)
         {
-            throw std::system_error(errno, std::system_category(),
+            throw std::system_error(errno,
+                                    std::system_category(),
                                     std::format("{} inet_pton", std::source_location::current().function_name()));
         }
 
         if (bind(socket_.get(), reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) < 0)
         {
-            throw std::system_error(errno, std::system_category(),
+            throw std::system_error(errno,
+                                    std::system_category(),
                                     std::format("{} bind", std::source_location::current().function_name()));
         }
 
@@ -219,6 +231,8 @@ namespace imr::mold::retransmission
         {
             throw std::system_error(errno, std::system_category());
         }
+
+        util::log::debug();
 #endif
     }
 }

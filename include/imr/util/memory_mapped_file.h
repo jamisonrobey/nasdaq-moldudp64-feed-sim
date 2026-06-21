@@ -3,6 +3,7 @@
 #include "imr/util/file_descriptor.h"
 
 #include <sys/mman.h>
+#include <span>
 
 namespace imr::util
 {

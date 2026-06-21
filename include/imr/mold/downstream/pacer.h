@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imr/util/log.h"
 #include <chrono>
 #include <concepts>
 
@@ -54,28 +55,31 @@ namespace imr::mold::downstream
 
         Pacer(const Config& cfg)
             : playback_speed_{cfg.playback_speed},
-              skip_before_{cfg.skip_before}
-        {
-            // std::println(stderr, "[pacer] speed={} skip_before={}ns", playback_speed_, skip_before_.count());
-        }
+              skip_before_{cfg.skip_before} {}
 
         [[nodiscard]]
         bool should_skip(std::chrono::nanoseconds packet_timestamp)
         {
             return packet_timestamp < skip_before_;
         }
+
         [[nodiscard]]
         std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
         {
-            if (!replay_origin_.has_value())
-            {
-                replay_origin_ = packet_timestamp;
-                wall_origin_ = Clock::now();
-            }
-
             if (should_skip(packet_timestamp))
             {
                 return std::nullopt;
+            }
+
+            if (!replay_origin_.has_value())
+
+            {
+                replay_origin_ = packet_timestamp;
+                wall_origin_ = Clock::now();
+
+                util::log::debug("Downstream pacer: replay origin set at {}ns (wall origin {}ns since epoch)",
+                                 replay_origin_->count(),
+                                 wall_origin_.time_since_epoch().count());
             }
 
             return calculate_delay(packet_timestamp);

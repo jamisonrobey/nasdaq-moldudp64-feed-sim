@@ -1,4 +1,5 @@
 #include "imr/util/memory_mapped_file.h"
+#include "imr/util/log.h"
 
 #include <filesystem>
 #include <sys/mman.h>
@@ -28,12 +29,15 @@ namespace imr::util
         {
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
+
+        util::log::debug();
     }
 
     MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& other) noexcept
         : fd_{std::move(other.fd_)},
           length_{std::exchange(other.length_, 0)},
-          mapped_file_{std::exchange(other.mapped_file_, nullptr)} {}
+          mapped_file_{std::exchange(other.mapped_file_, nullptr)}
+    {}
 
     MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& other) noexcept
     {

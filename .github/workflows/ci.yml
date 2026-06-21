@@ -14,7 +14,7 @@ jobs:
         with:
           path: /var/cache/apt
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
-      - run: apt-get update && apt-get install -y cmake gcc g++ clang lld git ninja-build libgtest-dev
+      - run: apt-get update && apt-get install -y cmake gcc g++ clang libc++-dev libc++abi-dev lld git ninja-build libgtest-dev
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON -DBUILD_INTEGRATION_TESTS=On
       - name: Build

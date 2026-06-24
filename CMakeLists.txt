@@ -114,7 +114,7 @@ if(PROJECT_IS_TOP_LEVEL)
             set(_imr_skip_system_gtest TRUE)
         endif()
 
-        if(NOT _imr_skip_system_gtest)
+       if(NOT _imr_skip_system_gtest)
             find_package(GTest 1.17.0 QUIET)
         endif()
 

@@ -20,8 +20,8 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
       - name: Test
-        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure
-
+        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure -j$(nproc)
+ 
   # -Wunused can fire if we not careful with these flags so just check if builds successfuly for any combo
   # (preset/compiler doesn't matter)
   flag-werror-check:

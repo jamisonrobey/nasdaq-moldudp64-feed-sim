@@ -56,7 +56,12 @@ namespace imr::mold::downstream
     {
         util::log::info("Downstream feed: started");
 
-        heartbeat_.start(st);
+        util::log::info("DIAGNOSTIC: file_size = {}, file_pos = {}, stop_requested = {}",
+                        file_.size(),
+                        file_pos_,
+                        st.stop_requested());
+
+        heartbeat_.start();
 
         while (file_pos_ < file_.size() && !st.stop_requested())
         {
@@ -82,7 +87,7 @@ namespace imr::mold::downstream
 
             if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value())
             {
-                util::log::debug("Downstream feed delaying: {}ns", *delay);
+//                util::log::debug("Downstream feed delaying: {}ns", *delay);
 #ifndef DEBUG_NO_SLEEP
                 std::this_thread::sleep_for(*delay);
 #endif
@@ -91,6 +96,8 @@ namespace imr::mold::downstream
             send_packet();
         }
 
+        // end of session replaces heartbeat (same period) so we stop it now
+        heartbeat_.stop();
         end_of_session(st);
 
         util::log::info("Downstream feed: finished");
@@ -158,13 +165,12 @@ namespace imr::mold::downstream
 #ifndef DEBUG_NO_NETWORK
         std::array<char, types::header::length> eos_packet{};
 
-        std::size_t pos{0};
-        util::binary_io::write_at(std::span(eos_packet), pos, packet_builder_.session());
+        using namespace imr::mold::types;
+        std::span eos_packet_span(eos_packet);
 
-        static constexpr types::header::MessageCount eos_msg_count{std::numeric_limits<types::header::MessageCount>::max()};
-        util::binary_io::write_at_be(std::span(eos_packet), pos, eos_msg_count);
-
-        util::binary_io::write_at_be(std::span(eos_packet), pos, sequence_number_);
+        util::binary_io::write_at(eos_packet_span, header::session_offset, packet_builder_.session());
+        util::binary_io::write_at_be(eos_packet_span, header::sequence_number_offset, sequence_number_);
+        util::binary_io::write_at_be(eos_packet_span, header::message_count_offset, header::end_of_session_msg_count);
 
         const auto start{std::chrono::high_resolution_clock::now()};
         const auto end{start + end_of_session_duration_};

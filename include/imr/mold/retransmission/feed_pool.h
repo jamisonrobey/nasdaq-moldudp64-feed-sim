@@ -16,6 +16,7 @@ namespace imr::mold::retransmission
         FeedPool(std::size_t num_feeds,
                  const Feed::Config& feed_cfg,
                  const PacketBuilder::Config& packet_builder_cfg,
+                 std::span<const char> file,
                  const RetransmissionBuffer& retransmission_buffer);
 
         void stop() const;

@@ -16,11 +16,6 @@ namespace
     class MemoryMappedFileTest : public test_common::TestFileFixture<MemoryMappedFileTest>
     {
       public:
-        static constexpr std::string_view file_name()
-        {
-            return "mmap_test_text_file.txt";
-        }
-
         static constexpr std::string_view get_test_content()
         {
             return expected_content;

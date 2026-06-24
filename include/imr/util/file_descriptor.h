@@ -8,6 +8,7 @@ namespace imr::util
     class FileDescriptor
     {
       public:
+        FileDescriptor() = default;
         explicit FileDescriptor(int fd);
         explicit FileDescriptor(const std::filesystem::path& path, int flags = O_RDONLY);
 

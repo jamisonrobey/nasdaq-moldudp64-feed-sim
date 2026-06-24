@@ -5,7 +5,6 @@
 #include <atomic>
 #include <chrono>
 #include <netinet/in.h>
-#include <stop_token>
 #include <thread>
 
 namespace imr::mold::downstream
@@ -19,7 +18,9 @@ namespace imr::mold::downstream
                   std::string_view session,
                   const std::atomic<types::header::SequenceNumber>& next_seq);
 
-        void start(std::stop_token st);
+        void start();
+
+        void stop();
 
         [[nodiscard]]
         std::chrono::nanoseconds period() const noexcept;

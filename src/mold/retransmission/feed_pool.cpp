@@ -8,6 +8,7 @@ namespace imr::mold::retransmission
     FeedPool::FeedPool(std::size_t num_feeds,
                        const Feed::Config& feed_cfg,
                        const PacketBuilder::Config& packet_builder_cfg,
+                       std::span<const char> file,
                        const RetransmissionBuffer& retransmission_buffer)
         : feed_cfg_{feed_cfg},
           packet_builder_cfg_{packet_builder_cfg}
@@ -15,8 +16,8 @@ namespace imr::mold::retransmission
         feeds_.reserve(num_feeds);
         for (auto i{0UZ}; i < num_feeds; ++i)
         {
-            feeds_.emplace_back([this, &retransmission_buffer] {
-                Feed feed(feed_cfg_, packet_builder_cfg_, retransmission_buffer, shutdown_fd_.get());
+            feeds_.emplace_back([this, &retransmission_buffer, file] {
+                Feed feed(feed_cfg_, packet_builder_cfg_, file, retransmission_buffer, shutdown_fd_.get());
                 feed.start();
             });
 

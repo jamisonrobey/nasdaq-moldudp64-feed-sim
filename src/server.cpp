@@ -13,7 +13,9 @@ namespace imr
           retransmission_feeds_(cfg.num_retransmission_feeds,
                                 cfg.retransmission_feed_config,
                                 cfg.packet_builder_cfg,
-                                retransmission_buffer_) {}
+                                mapped_itch_file_.as_span(),
+                                retransmission_buffer_)
+    {}
 
     void Server::start()
     {

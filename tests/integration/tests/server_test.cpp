@@ -16,6 +16,10 @@ namespace
             {
                 .mcast_group = "239.0.0.1",
                 .end_of_session_duration = std::chrono::seconds(0),
+                .pacer_cfg =
+                    {
+                        .skip_before = std::chrono::nanoseconds(0),
+                    },
             },
         .retransmission_feed_config =
             {

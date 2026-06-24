@@ -20,27 +20,36 @@ namespace imr::mold::downstream
         // write header (no need to write seq now)
         std::span packet_span(packet_);
         util::binary_io::write_at(packet_span, types::header::session_offset, session);
-        util::binary_io::write_at_be(packet_span, types::header::message_count_offset, types::header::MessageCount{0});
+        util::binary_io::write_at_be(packet_span, types::header::message_count_offset, types::header::heartbeat_msg_count);
 
         util::log::debug();
     }
 
-    void Heartbeat::start(std::stop_token st)
+    void Heartbeat::start()
     {
         util::log::info("Hearbeat started");
 
-        thread_ = std::jthread([this, st]() {
+        thread_ = std::jthread([this](std::stop_token st) {
             while (!st.stop_requested())
             {
-                std::this_thread::sleep_for(period_);
-                if (!st.stop_requested())
-                {
-                    send();
+                send();
+                util::log::debug();
 
-                    util::log::debug();
-                }
+                std::this_thread::sleep_for(period_);
             }
         });
+    }
+
+    void Heartbeat::stop()
+    {
+        thread_.request_stop();
+
+        if (thread_.joinable())
+        {
+            thread_.join();
+        }
+
+        util::log::info("Downstream heartbeat requested stop");
     }
 
     std::chrono::nanoseconds Heartbeat::period() const noexcept

@@ -17,10 +17,12 @@ namespace imr::mold::retransmission
 {
     Feed::Feed(const Config& cfg,
                const PacketBuilder::Config& packet_builder_cfg,
+               std::span<const char> file,
                const RetransmissionBuffer& retransmission_buffer,
                int shutdown_fd)
         : shutdown_fd_{shutdown_fd},
           packet_builder_(packet_builder_cfg),
+          file_{file},
           retransmission_buffer_{&retransmission_buffer}
     {
         // 0 is stdin so will EPERM w/ epoll
@@ -113,7 +115,7 @@ namespace imr::mold::retransmission
     {
         using namespace types::header;
 
-        std::string_view recv_session(recv_buffer_.data(), session_offset);
+        std::string_view recv_session(recv_buffer_.data(), sizeof(types::header::Session));
         if (recv_session != packet_builder_.session())
         {
             util::log::debug("Retransmission feed: bad request");
@@ -164,21 +166,18 @@ namespace imr::mold::retransmission
     void Feed::send_packet([[maybe_unused]] const sockaddr_in& client_addr)
     {
 #ifndef DEBUG_NO_NETWORK
-        std::span msg{packet_builder_.finalize()};
-        if (const auto bytes_sent{sendto(
-                socket_.get(), msg.data(), msg.size(), 0, reinterpret_cast<const sockaddr*>(&client_addr), sizeof(client_addr))};
-            bytes_sent < 0)
+        auto msg{packet_builder_.finalize()};
+
+        msghdr send_hdr{};
+        send_hdr.msg_name = const_cast<sockaddr_in*>(&client_addr);
+        send_hdr.msg_namelen = sizeof(client_addr);
+        send_hdr.msg_iov = const_cast<iovec*>(msg.data());
+        send_hdr.msg_iovlen = msg.size();
+
+        // 3. Send using sendmsg
+        if (const auto bytes_sent{sendmsg(socket_.get(), &send_hdr, 0)}; bytes_sent < 0)
         {
             util::log::perror();
-        }
-        else if (static_cast<std::size_t>(bytes_sent) != msg.size())
-        {
-#ifndef NDEBUG
-            util::log::error("{} sendto: only sent {} of {} bytes",
-                             std::source_location::current().function_name(),
-                             bytes_sent,
-                             msg.size());
-#endif
         }
 #endif
     }

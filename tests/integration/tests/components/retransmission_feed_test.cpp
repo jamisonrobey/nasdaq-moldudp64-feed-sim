@@ -6,6 +6,11 @@
 
 using namespace imr::mold;
 
+namespace
+{
+    constexpr std::array file{'c', 'd', 'e'};
+    constexpr std::span file_span{file};
+}
 class RetransmissionFeedTest : public ::testing::Test
 {
   protected:
@@ -16,7 +21,7 @@ class RetransmissionFeedTest : public ::testing::Test
 
     retransmission::Feed make_feed(const retransmission::Feed::Config& cfg)
     {
-        return retransmission::Feed(cfg, packet_builder_cfg, retransmission_buffer, eventfd(0, EFD_CLOEXEC));
+        return retransmission::Feed(cfg, packet_builder_cfg, file_span, retransmission_buffer, eventfd(0, EFD_CLOEXEC));
     }
 };
 
@@ -36,6 +41,20 @@ TEST_F(RetransmissionFeedTest, Ctor_InvalidAddress_ThrowsInvalidArgument)
 
 TEST_F(RetransmissionFeedTest, Ctor_InvalidShutdownFd_ThrowsInvalidArugment)
 {
-    EXPECT_THROW(retransmission::Feed({.address = "127.0.0.1"}, packet_builder_cfg, retransmission_buffer, 0), std::invalid_argument);
-    EXPECT_THROW(retransmission::Feed({.address = "127.0.0.1"}, packet_builder_cfg, retransmission_buffer, -1), std::invalid_argument);
+
+    EXPECT_THROW(retransmission::Feed({.address = "127.0.0.1"},
+                                      packet_builder_cfg,
+                                      file_span,
+                                      retransmission_buffer,
+                                      -1),
+                 std::invalid_argument);
+
+    EXPECT_THROW(retransmission::Feed({
+                                          .address = "127.0.0.1",
+                                      },
+                                      packet_builder_cfg,
+                                      file_span,
+                                      retransmission_buffer,
+                                      0),
+                 std::invalid_argument);
 }

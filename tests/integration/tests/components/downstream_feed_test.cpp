@@ -5,6 +5,11 @@
 
 using namespace imr::mold;
 
+namespace
+{
+    constexpr std::array file{'a', 'b', 'c'};
+}
+
 class DownstreamFeedTest : public ::testing::Test
 {
   protected:
@@ -12,7 +17,6 @@ class DownstreamFeedTest : public ::testing::Test
     PacketBuilder::Config packet_builder_cfg{
         .session = "SESSION001",
     };
-    static constexpr std::array file{'a', 'b', 'c'};
 
     downstream::Feed make_feed(const downstream::Feed::Config& cfg)
     {

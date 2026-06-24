@@ -6,6 +6,7 @@
 #include <imr/mold/packet_builder.h>
 #include <imr/mold/downstream/pacer.h>
 
+#include <unistd.h>
 #include <filesystem>
 #include <fstream>
 
@@ -23,7 +24,14 @@ namespace test_common
       protected:
         static std::filesystem::path test_path()
         {
-            return std::filesystem::path(TEST_DATA_DIR) / Derived::file_name();
+            static const std::filesystem::path path{[] {
+                const auto* suite_info{::testing::UnitTest::GetInstance()->current_test_suite()};
+                // pid for different filenames when running ctest multithreaded
+                const auto filename{std::string(suite_info->name()) + "_" + std::to_string(getpid())};
+                return std::filesystem::path(TEST_DATA_DIR) / filename;
+            }()};
+
+            return path;
         }
 
         static void SetUpTestSuite()
@@ -39,11 +47,14 @@ namespace test_common
             std::filesystem::remove(test_path());
         }
 
-        // make similar servers with diff ports
+        // handles std::expect boiler plate and will give you isolated port for each server if threaded / multiprocess
         static std::unique_ptr<imr::Server> make_test_server(imr::Server::Config& config)
         {
-            static std::atomic<std::uint16_t> downstream_port{3400};
-            static std::atomic<std::uint16_t> retransmission_port{3500};
+            // separate process (ctest -j) will get same port so use pid
+            static const auto pid_offset{static_cast<std::uint16_t>(getpid() % 1000) * 10};
+
+            static std::atomic<std::uint16_t> downstream_port(3400 + pid_offset);
+            static std::atomic<std::uint16_t> retransmission_port(3500 + pid_offset);
 
             config.mapped_itch_file_cfg.path = test_path();
             config.downstream_feed_config.port = downstream_port.fetch_add(1, std::memory_order_relaxed);
@@ -61,11 +72,6 @@ namespace test_common
     class ItchFileFixture : public TestFileFixture<ItchFileFixture<NumMessages, TimestampIncrementNs>>
     {
       public:
-        static constexpr std::string_view file_name()
-        {
-            return "itch_test_file";
-        }
-
         static consteval auto get_test_content()
         {
             std::array<char, NumMessages * min_message_size> file{};

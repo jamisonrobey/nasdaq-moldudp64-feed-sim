@@ -169,12 +169,12 @@ namespace imr::mold::retransmission
         auto msg{packet_builder_.finalize()};
 
         msghdr send_hdr{};
+
         send_hdr.msg_name = const_cast<sockaddr_in*>(&client_addr);
         send_hdr.msg_namelen = sizeof(client_addr);
-        send_hdr.msg_iov = const_cast<iovec*>(msg.data());
+        send_hdr.msg_iov = msg.data();
         send_hdr.msg_iovlen = msg.size();
 
-        // 3. Send using sendmsg
         if (const auto bytes_sent{sendmsg(socket_.get(), &send_hdr, 0)}; bytes_sent < 0)
         {
             util::log::perror();

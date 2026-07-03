@@ -10,41 +10,60 @@
 
 namespace imr::mold
 {
-    // builds MoldUDP64 packets
-    // How to use:
-    //  1. Call reset to write sequence number to the header
-    //  2. add messages with try_add() until either added all or try_add() returns false indicating a full packet (according to the MTU given in ctor)
-    //  3. Call finalize to write the message count to the header and get a span of iovecs that contains the full packet
+    /** Builds MoldUDP64 packets.
+     *
+     *  Usage:
+     *
+     *  1. Call reset() to write the sequence number to the header.
+     *
+     *  2. Add messages with try_add() until all are added, or it returns false (packet full per the configured MTU).
+     *
+     *  3. Call finalize() to write the message count to the header and get the completed packet as a span of iovecs
+     */
     class PacketBuilder
     {
       public:
-        // for total view itch
-        // https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/nqtvitchspecification.pdf
-        // smallest message 12-bytes + 2-byte length prefix
-        static constexpr std::uint16_t min_message_size{14};
-
+        // todo change this to something like totalview_5_0_min_message_size and update tests but just leaving now to make tests compile temporarily
+        static constexpr auto min_message_size{14};
         struct Config
         {
-            // exactly 10 characters or throws std::invalid_argument
+            /// MoldUDP64 Session, Must be 10 characters.
             std::string_view session;
-            // must be >= types::header::length (20 bytes) or throws std::invalid_argument
+            /// MTU for packet, default is ethernet MTU (1500 bytes) - IP/UDP headers (28 bytes).
             std::size_t MTU{1472};
+            /**  Smallest possible message size (including 2-byte length prefix); defaults to 14 (TotalView-ITCH 5.0).
+             *
+             * Configurable in case a future TotalView version introduces smaller messages.
+             *
+             * Used to size the iovecs vector for the worst case packet (`MTU` / `min_message_size`),
+             * i.e. a packet filled entirely with minimum-size messages.
+             *
+             @see https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/nqtvitchspecification.pdf
+            */
+            std::size_t min_message_size{PacketBuilder::min_message_size};
         };
 
+        /**
+         *  @throws std::invalid_argument if cfg.session is not 10 characters
+         *  @throws std::invalid_argument if cfg.MTU less than the size of a MoldUDP64 header (20 bytes)
+         */
         explicit PacketBuilder(const Config& cfg);
-
-        // you can add whatever but this is intended to be messages that should be apart of the mold
-        // message block.
+        /** Adds a message to the messge block.
+         *  
+         *  @returns false without adding message if wouldn't fit under configured MTU.
+         */
         [[nodiscard]]
         bool try_add(std::span<const char> message) noexcept;
-        // writes message_count to header, returns header + msg block as iovec span for msghdr
+        /// Writes the message count to the header and returns header + message block as iovecs.
         [[nodiscard]]
         std::span<iovec> finalize() noexcept;
-        // writes sequence number to header and clears message block
+        /// Writes sequence number for new packet to header and clears the message block.
         void reset(types::header::SequenceNumber seq = 1) noexcept;
 
+        /// Number of messages added since last `reset()`.
         [[nodiscard]]
         types::header::MessageCount message_count() const noexcept;
+        /// Returns the configured MoldUDP64 session from header
         [[nodiscard]]
         std::string_view session() const noexcept;
 
@@ -56,5 +75,7 @@ namespace imr::mold
         // [0] = header (*iov_base = header_buffer_), [1..N] = messages
         // N = 1 (header) + (MTU_ / min_message_size_)
         std::vector<iovec> iovecs_;
+
+        std::size_t min_message_size_;
     };
 }

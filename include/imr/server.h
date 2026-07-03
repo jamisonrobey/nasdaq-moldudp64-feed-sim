@@ -9,34 +9,91 @@
 #include <thread>
 #include <memory>
 #include <expected>
+#include <algorithm>
 
+  /**
+   *
+   * @code{.cpp}
+   * imr::Server::Config cfg{...};
+   *
+   * // construct directly with try/catch 
+   *
+   * try
+   * {
+   *   Server server(cfg);
+   *   server.start();
+   *   server.wait_for_downstream();
+   *  }
+   *   catch (const std::exception& ex)
+   *  {
+   *   std::println("{}", ex.what());
+   *  }
+   *
+   *  // or use helper that catches and returns std::expected
+   *
+   *  const std::expected res{imr::make_server(cfg)};
+   *  if (!res.has_value())
+   *  {
+   *    std::println(stderr, "{}", res.error());
+   *  }
+   *
+   *  std::unique_ptr<imr::Server> server{*res};
+   *
+   *  server->start();
+   *  server->wait_for_downstream();
+   * @endcode
+   *
+   */
 namespace imr
 {
+
+    /// A MoldUDP64 server that replays NASDAQ TotalView-ITCH 5.0 files.
     class Server
     {
       public:
-        // each config's declaration details their values in depth. alternatively, check examples directory
+        /// Aggregate for configuration of all server components.
         struct Config
         {
             util::MemoryMappedFile::Config mapped_itch_file_cfg;
             mold::PacketBuilder::Config packet_builder_cfg;
             mold::downstream::Feed::Config downstream_feed_config;
-            // pow2 buffer_size will use bitmasking for index lookup (better perf), non-pow2 falls back to division
+            /**
+             Capacity of the retransmission ring buffer, in messages.
+
+             Power-of-two sizes use bitmasking for index lookup (faster); non-power-of-two sizes fall back to division.
+             */
             std::size_t retransmission_buffer_size{1 << 22U};
             mold::retransmission::Feed::Config retransmission_feed_config;
-            //  hardware_concurrency() - 1 for downstream thread but this is just a default
-            std::size_t num_retransmission_feeds{std::thread::hardware_concurrency() - 1};
+            /**
+             Number of retransmission feed worker threads.
+             
+             Defaults to `std::thread::hardware_concurrency() - 1` (or 1 if single core), 
+             reserving one core for the downstream feed thread.        
+             */
+            std::size_t num_retransmission_feeds{std::max(std::thread::hardware_concurrency() - 1, 1U)};
         };
 
+        /**
+         Constructs server ready to start 
+
+         @throws std::invalid_arugment if configuration passed is invalid
+         @throws std::system_error if system calls to setup server fail
+        */
         explicit Server(const Config& cfg);
 
-        // start downstream and run to file completion then stop feeds
+        /**
+         Starts downstream replay and retransmission feeds.
+
+         Downstreams and retransmission feeds run in background threads until downstream reaches end of file and finishes sending
+         downstream packets
+         */
         void start();
 
-        // block until downstream finishes
+        /// Blocks caller until downstream replay finishes.
         void wait_for_downstream();
 
-        // stop early
+        
+        /// Stop all feeds early (before downstream reaches end of file).
         void stop();
 
         ~Server();
@@ -57,7 +114,11 @@ namespace imr
         void join_downstream();
     };
 
-    // use this if don't want to try/catch the ctor directly
+    /**
+     Allows you to construct server without try/catch block to handle configuration errors.
+
+     At the moment just returns a string describing the error, so you can print and see what went wrong.
+    */
     std::expected<std::unique_ptr<Server>, std::string> make_server(const Server::Config& cfg) noexcept;
 
 }

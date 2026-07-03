@@ -5,12 +5,11 @@
 
 namespace imr::util
 {
-    // basic wrapper that just ensures null terminator for c api that don't take length of str
+    /// A wrapper around `std::string_view` that guarantees null terminated strings for passing to C APIs.
     class zstring_view
     {
       public:
         constexpr zstring_view(const char* str) noexcept : sv_(str) {}
-
         zstring_view(const std::string& str) noexcept : sv_(str) {}
 
         zstring_view(std::string_view) = delete;

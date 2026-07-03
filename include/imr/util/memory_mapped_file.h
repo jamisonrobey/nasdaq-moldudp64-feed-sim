@@ -7,17 +7,29 @@
 
 namespace imr::util
 {
+    /** RAII mmap file
+
+     Read only so PROT_READ and only returns const span view
+     */
     class MemoryMappedFile
     {
       public:
         struct Config
         {
-            // this throws if not a valid path or is a directory
+            /**
+             Path of the file to map
+
+             @throws std::invalid_argument if invalid path or directory
+             @throws std::system_error if open() fails
+            */
             std::filesystem::path path;
-            // MAP_PRIVATE always used cause read only but you can add more with this
+            /**
+             Additional mmap() flags, OR'd with MAP_PRIVATE.
+             
+             MAP_PRIVATE is always used since the mapping is read only, but you can pass additional flags via this.
+             */
             int mmap_flags{0};
-            off_t offset{0};
-            // 0 skips madvise
+            /// Flags passed to madvise() after mapping. Pass 0 to skip madvise() call entirely.
             int madvise_flags{0};
         };
 
@@ -31,7 +43,6 @@ namespace imr::util
 
         ~MemoryMappedFile();
 
-        // only require read only access
         [[nodiscard]]
         std::span<const char> as_span() const noexcept;
 

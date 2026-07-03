@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <test_file_fixture.h>
+#include "server_test_fixture.h"
+#include "itch_file_fixture.h"
 
 #include <imr/server.h>
 
@@ -29,7 +29,7 @@ namespace
 
 }
 
-class ServerIntegrationTest : public test_common::ItchFileFixture<1024>
+class ServerIntegrationTest : public test_common::ServerTestFixture<test_common::ItchFileFixture<1024>>
 {
 };
 

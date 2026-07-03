@@ -37,8 +37,7 @@ namespace imr::mold::downstream
                const PacketBuilder::Config& packet_builder_cfg,
                std::span<const char> file,
                RetransmissionBuffer& retransmission_buffer)
-        : socket_{socket(AF_INET, SOCK_DGRAM, 0)},
-          mcast_group_{configure_socket(cfg)},
+        : mcast_group_{configure_socket(cfg)},
           file_(file),
           retransmission_buffer_(&retransmission_buffer),
           pacer_(cfg.pacer_cfg),
@@ -87,7 +86,6 @@ namespace imr::mold::downstream
 
             if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value())
             {
-//                util::log::debug("Downstream feed delaying: {}ns", *delay);
 #ifndef DEBUG_NO_SLEEP
                 std::this_thread::sleep_for(*delay);
 #endif
@@ -205,7 +203,7 @@ namespace imr::mold::downstream
 #endif
     }
 
-    sockaddr_in Feed::configure_socket([[maybe_unused]] const Config& cfg) const
+    sockaddr_in Feed::configure_socket(const Config& cfg) const
     {
         constexpr auto sockopt_on{1};
         if (setsockopt(socket_.get(), SOL_SOCKET, SO_REUSEADDR, &sockopt_on, sizeof(sockopt_on)) < 0 ||
@@ -227,12 +225,12 @@ namespace imr::mold::downstream
             throw std::system_error(errno, std::system_category());
         }
 
-        if (!cfg.loopback)
+        if (cfg.loopback && setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &sockopt_on, sizeof(sockopt_on)) < 0)
         {
-            return mcast_group;
+            throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
 
-        if (setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &sockopt_on, sizeof(sockopt_on)) < 0)
+        if (setsockopt(socket_.get(), IPPROTO_IP, IP_MULTICAST_IF, &cfg.egress_interface, sizeof(cfg.egress_interface)) < 0)
         {
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }

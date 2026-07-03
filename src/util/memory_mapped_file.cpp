@@ -14,7 +14,7 @@ namespace imr::util
           length_{std::filesystem::file_size(cfg.path)}
     {
         // we only read file ever so PROT_READ and MAP_PRIVATE always
-        mapped_file_ = mmap(nullptr, length_, PROT_READ, MAP_PRIVATE | cfg.mmap_flags, fd_.get(), cfg.offset);
+        mapped_file_ = mmap(nullptr, length_, PROT_READ, MAP_PRIVATE | cfg.mmap_flags, fd_.get(), 0);
         if (mapped_file_ == MAP_FAILED)
         {
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());

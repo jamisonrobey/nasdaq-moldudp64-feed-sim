@@ -20,7 +20,7 @@ namespace imr::mold::retransmission
         {
             // valid ip address like 127.0.0.1 or throws system_error if inet_pton fails to set address
             util::zstring_view address;
-            // valid port or throws system error when bind fails (check)
+            // valid port or throws system error when bind fails (check) chose 0 to let os assign port
             std::uint16_t port;
         };
 
@@ -33,8 +33,8 @@ namespace imr::mold::retransmission
         void start();
 
       private:
-        util::FileDescriptor socket_{socket(AF_INET, SOCK_DGRAM, 0)};
-        util::FileDescriptor epoll_fd_{epoll_create1(0)};
+        util::FileDescriptor socket_{[] { return socket(AF_INET, SOCK_DGRAM, 0); }};
+        util::FileDescriptor epoll_fd_{[] { return epoll_create1(0); }};
         int shutdown_fd_;
         // so we dont have to static_cast .size() each time when calling epoll_wait()
         static constexpr int num_epoll_events{2};

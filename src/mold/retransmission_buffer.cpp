@@ -28,14 +28,14 @@ namespace imr::mold
         buffer_.resize(buffer_size);
     }
 
-    void RetransmissionBuffer::push(RetransmissionBuffer::MessageRecord&& message_record) noexcept
+    void RetransmissionBuffer::push(const RetransmissionBuffer::MessageRecord& message_record) noexcept
     {
         buffer_[index_for(message_record.sequence_number)] = message_record;
 
         write_seq_.store(message_record.sequence_number, std::memory_order_release);
     }
 
-    std::optional<types::header::SequenceNumber> RetransmissionBuffer::file_position_for(types::header::SequenceNumber seq_num)
+    std::optional<std::size_t> RetransmissionBuffer::file_position_for(types::header::SequenceNumber seq_num)
         const noexcept
     {
         const auto current_seq_num{write_seq_.load(std::memory_order_acquire)};

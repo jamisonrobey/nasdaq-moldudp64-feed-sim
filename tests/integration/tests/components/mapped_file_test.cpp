@@ -45,7 +45,6 @@ TEST_F(MemoryMappedFileTest, Ctor_FullConfig_VerifyContents)
     MemoryMappedFile file({
         .path = test_path(),
         .mmap_flags = MAP_POPULATE,
-        .offset = 0,
         .madvise_flags = MADV_SEQUENTIAL,
     });
 

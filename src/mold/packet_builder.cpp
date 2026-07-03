@@ -11,7 +11,8 @@
 namespace imr::mold
 {
     PacketBuilder::PacketBuilder(const Config& cfg)
-        : MTU_{cfg.MTU}
+        : MTU_{cfg.MTU},
+          min_message_size_{cfg.min_message_size}
     {
         if (MTU_ < types::header::length)
         {
@@ -27,7 +28,7 @@ namespace imr::mold
         }
 
         // + 1 for header
-        iovecs_.reserve(1 + (MTU_ / min_message_size));
+        iovecs_.reserve(1 + (MTU_ / min_message_size_));
 
         util::binary_io::write_at(std::span(header_buffer_), 0, cfg.session);
         iovecs_.emplace_back(header_buffer_.data(), header_buffer_.size());
@@ -41,7 +42,7 @@ namespace imr::mold
             return false;
         }
 
-        assert(message.size() >= min_message_size);
+        assert(message.size() >= min_message_size_);
 
         iovecs_.emplace_back(const_cast<char*>(message.data()), message.size());
         bytes_remaining_ -= message.size();

@@ -1,16 +1,10 @@
 BasedOnStyle: Microsoft
 PointerAlignment: Left
-# BinPackParameters: false
-# AlignAfterOpenBracket: Align
-
 AlignAfterOpenBracket: Align
 BinPackArguments: false
 BinPackParameters: false
 PackConstructorInitializers: Never
-
-BraceWrapping:
-  SplitEmptyFunction: false
-
+# BraceWrapping:
 ColumnLimit: 0
 BreakBeforeBinaryOperators: None
 NamespaceIndentation: All
@@ -18,4 +12,3 @@ FixNamespaceComments: false
 SortIncludes: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
-

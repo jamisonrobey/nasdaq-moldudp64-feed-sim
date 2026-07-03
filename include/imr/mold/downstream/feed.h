@@ -26,6 +26,7 @@ namespace imr::mold::downstream
             // socket options
             std::uint8_t ttl{1};
             bool loopback{false};
+            in_addr egress_interface{.s_addr = htonl(INADDR_ANY)};
             // timing
             std::chrono::nanoseconds heartbeat_period{std::chrono::seconds(1)};
             std::chrono::nanoseconds end_of_session_duration{std::chrono::seconds(30)};
@@ -42,7 +43,7 @@ namespace imr::mold::downstream
         void start(std::stop_token st);
 
       private:
-        util::FileDescriptor socket_;
+        util::FileDescriptor socket_{[] { return socket(AF_INET, SOCK_DGRAM, 0); }};
         sockaddr_in mcast_group_;
         msghdr send_hdr_{};
 

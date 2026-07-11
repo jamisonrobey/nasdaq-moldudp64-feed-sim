@@ -44,7 +44,7 @@ namespace imr::mold::retransmission
         auto should_stop{false};
         while (!should_stop)
         {
-            const int nfds{epoll_wait(epoll_fd_.get(), epoll_events_.data(), num_epoll_events, -1)};
+            const int nfds{epoll_wait(epoll_fd_.get(), epoll_events_.data(), static_cast<int>(epoll_events_.size()), -1)};
 
             if (nfds < 0)
             {

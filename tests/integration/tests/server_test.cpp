@@ -48,6 +48,23 @@ TEST_F(ServerIntegrationTest, Stop_WhileRunning)
 
     server->start();
     server->stop();
+
+    imr::Server::Config config{
+        .mapped_itch_file_cfg = {
+            .path = "FILE.NADSAQ_ITCH50",
+        },
+        .packet_builder_cfg = {
+            .session = "123456789",
+        },
+        .downstream_feed_config = {
+            .mcast_group = "239.0.0.1",
+            .port = 3400,
+        },
+        .retransmission_feed_config = {
+            .address = "127.0.0.1",
+            .port = 3500,
+        },
+    };
 }
 
 TEST_F(ServerIntegrationTest, Stop_AfterEOF)

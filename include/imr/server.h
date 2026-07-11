@@ -11,39 +11,39 @@
 #include <expected>
 #include <algorithm>
 
-  /**
-   *
-   * @code{.cpp}
-   * imr::Server::Config cfg{...};
-   *
-   * // construct directly with try/catch 
-   *
-   * try
-   * {
-   *   Server server(cfg);
-   *   server.start();
-   *   server.wait_for_downstream();
-   *  }
-   *   catch (const std::exception& ex)
-   *  {
-   *   std::println("{}", ex.what());
-   *  }
-   *
-   *  // or use helper that catches and returns std::expected
-   *
-   *  const std::expected res{imr::make_server(cfg)};
-   *  if (!res.has_value())
-   *  {
-   *    std::println(stderr, "{}", res.error());
-   *  }
-   *
-   *  std::unique_ptr<imr::Server> server{*res};
-   *
-   *  server->start();
-   *  server->wait_for_downstream();
-   * @endcode
-   *
-   */
+/**
+ *
+ * @code{.cpp}
+ * imr::Server::Config cfg{...};
+ *
+ndi  * // construct directly with try/catch
+ *
+ * try
+ * {
+ *   Server server(cfg);
+ *   server.start();
+ *   server.wait_for_downstream();
+ *  }
+ *   catch (const std::exception& ex)
+ *  {
+ *   std::println("{}", ex.what());
+ *  }
+ *
+ *  // or use helper that catches and returns std::expected
+ *
+ *  const std::expected res{imr::make_server(cfg)};
+ *  if (!res.has_value())
+ *  {
+ *    std::println(stderr, "{}", res.error());
+ *  }
+ *
+ *  std::unique_ptr<imr::Server> server{*res};
+ *
+ *  server->start();
+ *  server->wait_for_downstream();
+ * @endcode
+ *
+ */
 namespace imr
 {
 
@@ -58,7 +58,7 @@ namespace imr
             mold::PacketBuilder::Config packet_builder_cfg;
             mold::downstream::Feed::Config downstream_feed_config;
             /**
-             Capacity of the retransmission ring buffer, in messages.
+             Capacity of the retransmission ring buffer in messages.
 
              Power-of-two sizes use bitmasking for index lookup (faster); non-power-of-two sizes fall back to division.
              */
@@ -66,15 +66,14 @@ namespace imr
             mold::retransmission::Feed::Config retransmission_feed_config;
             /**
              Number of retransmission feed worker threads.
-             
-             Defaults to `std::thread::hardware_concurrency() - 1` (or 1 if single core), 
-             reserving one core for the downstream feed thread.        
+
+             Defaults to either 1 or one less than the hardware thread count for multicore systems to leave one thread for the downstream feed
              */
             std::size_t num_retransmission_feeds{std::max(std::thread::hardware_concurrency() - 1, 1U)};
         };
 
         /**
-         Constructs server ready to start 
+         Constructs server ready to start
 
          @throws std::invalid_arugment if configuration passed is invalid
          @throws std::system_error if system calls to setup server fail
@@ -92,7 +91,6 @@ namespace imr
         /// Blocks caller until downstream replay finishes.
         void wait_for_downstream();
 
-        
         /// Stop all feeds early (before downstream reaches end of file).
         void stop();
 

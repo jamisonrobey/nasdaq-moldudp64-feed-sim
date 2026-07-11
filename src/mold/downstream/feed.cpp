@@ -42,7 +42,7 @@ namespace imr::mold::downstream
           retransmission_buffer_(&retransmission_buffer),
           pacer_(cfg.pacer_cfg),
           packet_builder_{packet_builder_cfg},
-          heartbeat_(cfg.heartbeat_period, socket_.get(), mcast_group_, packet_builder_cfg.session, sent_sequence_number_),
+          heartbeat_(cfg.heartbeat_period, socket_, mcast_group_, packet_builder_cfg.session, sent_sequence_number_),
           end_of_session_duration_{cfg.end_of_session_duration}
     {
         send_hdr_.msg_name = &mcast_group_;
@@ -84,12 +84,9 @@ namespace imr::mold::downstream
 
             build_packet();
 
-            if (const std::optional delay{pacer_.get_delay(*timestamp)}; delay.has_value())
-            {
 #ifndef DEBUG_NO_SLEEP
-                std::this_thread::sleep_for(*delay);
+            std::this_thread::sleep_for(pacer_.get_delay(*timestamp));
 #endif
-            }
 
             send_packet();
         }

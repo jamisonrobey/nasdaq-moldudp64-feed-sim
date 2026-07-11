@@ -4,8 +4,6 @@
 #include <chrono>
 #include <concepts>
 
-#include <print>
-
 namespace imr::mold::downstream
 {
     enum class MarketPhase
@@ -36,41 +34,50 @@ namespace imr::mold::downstream
     inline constexpr auto market_pre{phase_to_ns(MarketPhase::pre)};
     inline constexpr auto market_close{phase_to_ns(MarketPhase::close)};
 
+    // templated so we can mock this for testing
     template <typename T>
     concept ClockConcept = requires {
         typename T::time_point;
         { T::now() } -> std::same_as<typename T::time_point>;
     };
 
+    /// Calculates relative delay for a given message timestamp for downstream (which passes the first message's timestamp from each packet )
     template <ClockConcept Clock = std::chrono::steady_clock>
     class Pacer
     {
       public:
         struct Config
         {
+
+            /// Scale calculated delays
             double playback_speed{1.0};
-            // MarketPhase::pre means no packets ignored
+            /* Returns delay of 0 for timestamps below this
+             *
+             * Use this with MarketPhase/phase_to_ns to skip market phases you don't want to sleep or send messages in
+             **/
             std::chrono::nanoseconds skip_before{phase_to_ns(MarketPhase::pre)};
         };
 
         Pacer(const Config& cfg)
             : playback_speed_{cfg.playback_speed},
-              skip_before_{cfg.skip_before} {}
+              skip_before_{cfg.skip_before}
+        {
+        }
 
+        /// True/false if given timestamp is before `skip_before_`
         [[nodiscard]]
         bool should_skip(std::chrono::nanoseconds packet_timestamp)
         {
             return packet_timestamp < skip_before_;
         }
 
+        /** Returns calculated delay
+         *
+         * The first time this is called this will set `replay_origin_` to `Clock::now()`
+         */
         [[nodiscard]]
-        std::optional<std::chrono::nanoseconds> get_delay(std::chrono::nanoseconds packet_timestamp)
+        std::chrono::nanoseconds get_delay(std::chrono::nanoseconds packet_timestamp)
         {
-            if (should_skip(packet_timestamp))
-            {
-                return std::nullopt;
-            }
-
             if (!replay_origin_.has_value())
 
             {

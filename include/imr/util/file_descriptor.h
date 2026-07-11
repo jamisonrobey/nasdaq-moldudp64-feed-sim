@@ -5,14 +5,12 @@
 #include <source_location>
 #include <system_error>
 #include <type_traits>
+#include <utility>
 
 namespace imr::util
 {
 
-    /**  Concept representing any callable taking no arguments and returning an int
-     *
-     * (e.g. a lambda wrapping open/dup/socket/etc). If the callable returns a negative value,
-     */
+    ///  Concept representing any callable taking no arguments and returning an int (wrapping open/dup/socket/etc).
     template <typename Fn>
     concept SyscallInvocable = std::is_invocable_r_v<int, Fn>;
 
@@ -40,16 +38,12 @@ namespace imr::util
          @see `SyscallConcept`
         */
         explicit FileDescriptor(SyscallInvocable auto&& syscall)
-            : fd_{[&syscall] {
-                  int result{std::forward<decltype(syscall)>(syscall)()};
-                  if (result < 0)
-                  {
-                      throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
-                  }
-
-                  return result;
-              }()}
         {
+            fd_ = std::forward<decltype(syscall)>(syscall)();
+            if (fd_ < 0)
+            {
+                throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
+            }
         }
 
         FileDescriptor(const FileDescriptor&) = delete;

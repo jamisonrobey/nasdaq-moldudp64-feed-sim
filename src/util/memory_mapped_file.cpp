@@ -25,7 +25,7 @@ namespace imr::util
             return;
         }
 
-        if (madvise(mapped_file_, std::filesystem::file_size(cfg.path), cfg.madvise_flags) == -1)
+        if (madvise(mapped_file_, length_, cfg.madvise_flags) == -1)
         {
             throw std::system_error(errno, std::system_category(), std::source_location::current().function_name());
         }
@@ -37,7 +37,8 @@ namespace imr::util
         : fd_{std::move(other.fd_)},
           length_{std::exchange(other.length_, 0)},
           mapped_file_{std::exchange(other.mapped_file_, nullptr)}
-    {}
+    {
+    }
 
     MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& other) noexcept
     {

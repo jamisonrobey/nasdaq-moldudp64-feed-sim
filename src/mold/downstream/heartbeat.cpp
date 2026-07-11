@@ -1,6 +1,7 @@
 #include "imr/mold/downstream/heartbeat.h"
 
 #include "imr/mold/types.h"
+#include "imr/util/file_descriptor.h"
 #include "imr/util/log.h"
 #include "util/binary_io.h"
 #include <stop_token>
@@ -8,19 +9,20 @@
 namespace imr::mold::downstream
 {
     Heartbeat::Heartbeat(std::chrono::nanoseconds period,
-                         int socket_fd,
+                         util::FileDescriptor& socket,
                          const sockaddr_in& mcast_group,
                          std::string_view session,
                          const std::atomic<types::header::SequenceNumber>& next_seq)
         : period_{period},
-          socket_{socket_fd},
+          socket_{&socket},
           mcast_group_{mcast_group},
           next_seq_{&next_seq}
     {
-        // write header (no need to write seq now)
+        // write header
         std::span packet_span(packet_);
         util::binary_io::write_at(packet_span, types::header::session_offset, session);
         util::binary_io::write_at_be(packet_span, types::header::message_count_offset, types::header::heartbeat_msg_count);
+        // no need to write seq now
 
         util::log::debug();
     }
@@ -63,7 +65,7 @@ namespace imr::mold::downstream
 
         util::binary_io::write_at_be(std::span(packet_), types::header::sequence_number_offset, seq);
 
-        if (sendto(socket_,
+        if (sendto(socket_->get(),
                    packet_.data(),
                    packet_.size(),
                    0,

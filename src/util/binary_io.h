@@ -1,10 +1,12 @@
 #pragma once
 #include <bit>
+
 #include <cstring>
 #include <span>
 #include <cassert>
 
 #include <ranges>
+#include <type_traits>
 
 // Does zero checking outside of debug asserts so you MUST make sure
 // the buffer you pass in is big enough to read/write your value
@@ -14,9 +16,18 @@
 
 namespace imr::util::binary_io
 {
+    // handle host endianness
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T to_be(T value) noexcept
+    {
+        if constexpr (std::endian::native == std::endian::big)
+            return value;
+        else
+            return std::byteswap(value);
+    }
 
     // basic io which other functions call
-
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     constexpr T read(std::span<const char> buf, std::size_t& pos) noexcept
@@ -73,27 +84,24 @@ namespace imr::util::binary_io
         requires std::is_trivially_copyable_v<T>
     constexpr T read_be(std::span<const char> buf, std::size_t& pos) noexcept
     {
-        return std::byteswap(read<T>(buf, pos));
+        return to_be(read<T>(buf, pos));
     }
-
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     constexpr void write_be(std::span<char> buf, std::size_t& pos, T value) noexcept
     {
-        write(buf, pos, std::byteswap(value));
+        write(buf, pos, to_be(value));
     }
-
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     constexpr T read_at_be(std::span<const char> buf, std::size_t offset) noexcept
     {
-        return std::byteswap(read_at<T>(buf, offset));
+        return to_be(read_at<T>(buf, offset));
     }
-
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     constexpr void write_at_be(std::span<char> buf, std::size_t offset, T value) noexcept
     {
-        write_at(buf, offset, std::byteswap(value));
+        write_at(buf, offset, to_be(value));
     }
 }

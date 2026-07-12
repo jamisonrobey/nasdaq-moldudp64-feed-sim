@@ -1,0 +1,5 @@
+# https://github.com/clangd/clangd/issues/662#issuecomment-1447233948 
+# if you've used clangd for lsp in nvim or vscode you know they raise bugged warnings (especially -f*) so for the current time we have this here, remove if you don't require this
+CompileFlags:
+  Add: -Wno-unknown-warning-option
+  Remove: [-m*, -f*]

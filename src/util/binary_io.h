@@ -1,0 +1,107 @@
+#pragma once
+#include <bit>
+
+#include <cstring>
+#include <span>
+#include <cassert>
+
+#include <ranges>
+#include <type_traits>
+
+// Does zero checking outside of debug asserts so you MUST make sure
+// the buffer you pass in is big enough to read/write your value
+// read/write - at a given position, advancing your position past the value when done
+// _at suffix - at an offset, with no advancing position (discarded)
+// _be versions: buffer is big endian, your value is little endian
+
+namespace imr::util::binary_io
+{
+    // handle host endianness
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T to_be(T value) noexcept
+    {
+        if constexpr (std::endian::native == std::endian::big)
+            return value;
+        else
+            return std::byteswap(value);
+    }
+
+    // basic io which other functions call
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T read(std::span<const char> buf, std::size_t& pos) noexcept
+    {
+        assert(pos + sizeof(T) <= buf.size());
+        T value{};
+        std::memcpy(&value, buf.data() + pos, sizeof(T));
+        pos += sizeof(T);
+        return value;
+    }
+
+    template <typename T>
+    concept ByteRange = std::ranges::contiguous_range<T> &&
+                        sizeof(std::ranges::range_value_t<T>) == 1;
+
+    // explicitly NOT byte_range here to prevent potential strange overload with the byte_range version of this
+    template <typename T>
+        requires std::is_trivially_copyable_v<T> && (!ByteRange<T>)
+    constexpr void write(std::span<char> buf, std::size_t& pos, T value) noexcept
+    {
+        assert(pos + sizeof(T) <= buf.size());
+        std::memcpy(buf.data() + pos, &value, sizeof(T));
+        pos += sizeof(T);
+    }
+
+    constexpr void write(std::span<char> buf, std::size_t& pos, const ByteRange auto& data) noexcept
+    {
+        assert(pos + std::ranges::size(data) <= buf.size());
+        std::memcpy(buf.data() + pos, std::ranges::data(data), std::ranges::size(data));
+        pos += std::ranges::size(data);
+    }
+
+    // _at use base functions but we don't care about the advanced position
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T read_at(std::span<const char> buf, std::size_t offset) noexcept
+    {
+        std::size_t pos = offset;
+        return read<T>(buf, pos);
+    }
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr void write_at(std::span<char> buf, std::size_t offset, T value) noexcept
+    {
+        std::size_t pos = offset;
+        write(buf, pos, value);
+    }
+
+    // _be versions byteswap before reading/writing
+
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T read_be(std::span<const char> buf, std::size_t& pos) noexcept
+    {
+        return to_be(read<T>(buf, pos));
+    }
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr void write_be(std::span<char> buf, std::size_t& pos, T value) noexcept
+    {
+        write(buf, pos, to_be(value));
+    }
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr T read_at_be(std::span<const char> buf, std::size_t offset) noexcept
+    {
+        return to_be(read_at<T>(buf, offset));
+    }
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
+    constexpr void write_at_be(std::span<char> buf, std::size_t offset, T value) noexcept
+    {
+        write_at(buf, offset, to_be(value));
+    }
+}

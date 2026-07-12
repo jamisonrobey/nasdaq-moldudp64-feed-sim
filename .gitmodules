@@ -1,3 +1,0 @@
-[submodule "external/jamutils"]
-	path = external/jamutils
-	url = https://github.com/jamisonrobey/jamutils.git

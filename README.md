@@ -1,106 +1,143 @@
-# NASDAQ MoldUDP64 Feed Simulator
-- Implements a [MoldUDP64](https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/moldudp64.pdf) server that replays a binary [Nasdaq TotalView-ITCH](https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHSpecification.pdf) file.
-- Downstream server multicasts ITCH messages, using the original timestamps for absolute time-based replay pacing.
-- Retransmission server for handling client requests for lost or missed messages by sequence number.
+`imr` (Nasdaq TotalView-<b>I</b>tch <b>M</b>oldUDP64 <b>R</b>eplay) is a C++23 library that replays [TotalView-ITCH 5.0](https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHSpecification.pdf) [files](#file-format) over [MoldUDP64](https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/moldudp64.pdf).
 
-## Build
-### Requirements
-- Linux
-- `gcc` >= 15
-  - It might work on gcc 14 but only tested on 15
-- `cmake` >= 3.20
-- `ninja` 
-  - If using the `cmake` presets
-- sanitizers: `libasan`, `libubsan`, `liblsan`, `libcfi`
-  - only needed for debug cmake preset 
-```bash
-git clone https://github.com/jamisonrobey/nasdaq-moldudp64-feed-sim.git --recursive itch-mold-replay
-cd itch-mold-replay
-cmake --preset release
-cd build-release && ninja
+## File format
+
+This library works with files containing TotalView-ITCH 5.0 messages, each prefixed by a 16-bit big-endian value giving the length of the message that follows. This is the format used by official distribution sources such as emi.nasdaq.com.
+
+## Requirements
+
+- Linux 
+- `g++` or `clang++` version that supports C++23
+- CMake >= 3.25
+
+## Usage
+
+### Add to executable with CMake
+
+As a subdirectory:
+
+```cmake
+add_subdirectory(nasdaq-moldudp64-feed-sim)
+target_link_libraries(your_target PRIVATE imr::imr)
 ```
-### CMake Presets
+
+Or via `FetchContent`:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(imr GIT_REPOSITORY <repo-url> GIT_TAG <tag>)
+FetchContent_MakeAvailable(imr)
+target_link_libraries(your_target PRIVATE imr::imr)
 ```
-cmake --list-presets
+
+### Example
+
+Link against `imr::imr` and include `imr/server.h`.
+
+```cpp
+#include "imr/server.h"
+
+imr::Server::Config cfg{
+    .mapped_itch_file_cfg = {
+        .path = "FILE.NADSAQ_ITCH50",
+    },
+    .packet_builder_cfg = {
+        .session = "123456789",
+    },
+    .downstream_feed_config = {
+        .mcast_group = "239.0.0.1",
+        .port = 3400,
+    },
+    .retransmission_feed_config = {
+        .address = "127.0.0.1",
+        .port = 3500,
+    },
+};
+
+// Option 1: exceptions
+try
+{
+    imr::Server server(cfg);
+    server.start();
+    server.wait_for_downstream();
+}
+catch (const std::exception& ex)
+{
+    std::println("{}", ex.what());
+}
+
+// Option 2: std::expected 
+const std::expected res{imr::make_server(cfg)};
+if (!res.has_value())
+{
+    std::println(stderr, "{}", res.error());
+}
+```
+See [documentation](http://imr.jamisonrobey.com/group__config.html) for the full set of config options on each struct.
+
+## Log level
+
+Set at configure time via `-DIMR_LOG_LEVEL=N`, compiled in as a
+preprocessor definition.
+- `0`=error 
+- `1`=warn 
+- `2`=info 
+- `3`=debug 
+
+Levels above configured are compiled out (default 0).
+
+## Complimentary tools
+
+### [`tc`](https://man7.org/linux/man-pages/man8/tc-netem.8.html)
+
+Use the `netem` qdisc to inject artificial packet loss, delay, and reordering
+
+Run the server and client on either side of the impaired link and confirm your client detects gaps and recovers via the retransmission feed.
+
+### Wireshark
+
+Has built in dissectors for MoldUDP64 + TotalView-ITCH 5.0.
+
+
+## Building standalone 
+
+### Build options (CMake top level)
+
+| Option                    | Default | Description                                    |
+|---------------------------|---------|------------------------------------------------|
+| `BUILD_UNIT_TESTS`        | `OFF`   | Build unit tests                               |
+| `BUILD_INTEGRATION_TESTS` | `OFF`   | Build integration tests                        |
+| `BUILD_E2E_TESTS`         | `OFF`   | Build end-to-end tests                         |
+| `ENABLE_ASAN`             | `OFF`   | Build with AddressSanitizer + UBSan            |
+| `ENABLE_TSAN`             | `OFF`   | Build with ThreadSanitizer (mutually exclusive with ASan) |
+| `DEBUG_NO_NETWORK`        | `OFF`   | Disable network calls                          |
+| `DEBUG_NO_SLEEP`          | `OFF`   | Disable sleep calls                            |
+
+Example, building with unit tests and ASan:
+
+```sh
+$ cmake -B build -DBUILD_UNIT_TESTS=ON -DENABLE_ASAN=ON
+$ cmake --build build
+$ ctest --test-dir build
+```
+There are CMake presets:
+
+```sh
+$ cmake --list-presets
+
 Available configure presets:
 
-  "debug"                       - Debug
-  "release"                     - Release
+  "debug-gcc"     - Debug (GCC)
+  "debug-clang"   - Debug (Clang)
+  "release-gcc"   - Release (GCC)
+  "release-clang" - Release (Clang)
+  "asan-gcc"      - ASan (GCC)
+  "asan-clang"    - ASan (Clang)
+  "tsan-gcc"      - TSan (GCC)
+  "tsan-clang"    - TSan (Clang)
 ```
-You can use these presets or call cmake yourself.
 
+## License
 
-#### Build flags
+MIT — see [LICENSE](https://raw.githubusercontent.com/jamisonrobey/nasdaq-moldudp64-feed-sim/refs/heads/main/LICENSE) for details.
 
-You can pass some flags to CMake compiler which are useful for profiling or debugging internals without having to wait for replay timing or network: 
-  - `-DDEBUG_NO_NETORK=On` 
-    - network send and receive for the server not compiled
-  - `-DDEBUG_NO_SLEEP=On`
-    - calls to sleep not compiled which disables replay simulation
- - `-DBUILD_TESTS=On`
-    - build unit tests (run with CTest)
-## Usage
-### Replay file
-- You can obtain TotalView-ITCH data from [emi.nasdaq.com/ITCH/](https://emi.nasdaq.com/ITCH/)
-  - You will need to decompress the file before using
-### Running
-```
-./nasdaq-moldudp64-feed-sim [OPTIONS] mold-session itch-replay-file
-
-
-POSITIONALS:
-  mold-session TEXT REQUIRED  MoldUDP64 Session 
-  itch-replay-file TEXT:FILE REQUIRED
-                              Path to TotalView-ITCH replay file in binary 
-
-OPTIONS:
-  -h,     --help              Print this help message and exit 
-          --downstream-mcast-group, --group TEXT [239.0.0.1]  
-                              Downstream multicast group 
-          --downstream-port INT:INT in [1024 - 65535] [3400]  
-                              Downstream port 
-          --mcast-ttl, --ttl INT:INT in [0 - 255] [1]  
-                              Downstream TTL 
-          --loopback          Enable downstream loopback 
-          --replay-speed, --speed FLOAT [1]  
-                              Downstream replay speed 
-          --retrans-address TEXT [127.0.0.1]  
-                              Retransmission address 
-          --retrans-port INT:INT in [1025 - 65535] [3500]  
-                              Retransmission port 
-          --retrans-buffer-size UINT [4194304]  
-                              Retransmission buffer size 
-          --retrans-threads, --threads UINT [12]  
-                              Number of retransmission threads 
-          --start-phase, --start ENUM:value in {close->2,open->1,pre->0} OR {2,1,0} [0]  
-                              Market phase to start replay (pre, open, close) 
-```
-### Example run configurations
-```bash
-# w/ defaults
-./itch_mold_replay SESSION001 path/to/itch_file
-# w/ loopback and ttl 2.0
-./itch_mold_replay SESSION001 path/to/itch_file --loopback --ttl 2
-# w/ replay_speed 50x and starting at market open
-./itch_mold_replay SESSION001 --replay-speed 50x --start-phase open 
-```
-### E2E Test
-The project includes a python test suite that validates the server from a client's perspective.
-
-**Running locally:**
-```bash
-pip install -r tests/e2e/requirements.txt
-pytest -v -s tests/e2e/e2e.py \
-  --path-to-server ./build-release/nasdaq-moldudp64-feed-sim \
-  --path-to-sample-file ./tests/e2e/data/12302019_SNIPPET.NASDAQ_ITCH50
-```
-## Useful tools 
-### Traffic control (`tc`)
-When this server and a client are on the same network or machine, you will observe a reliable connection which is not very useful if you're trying to test handling out-of-order or missing packets with your client. You can use [tc](https://man7.org/linux/man-pages/man8/tc.8.html) to introduce packet loss, reordering, latency jitter etc if desired.
-### Wireshark
-- ITCH dissectors for Wireshark by the Open Market Initiative for visualizing the output
-- The image below is a capture of the multicast feed decoded in Wireshark using the [Nasdaq_Nsm_Equities_TotalView_Itch_v5_0_Dissector.lua](https://github.com/Open-Markets-Initiative/wireshark-lua/blob/main/Nasdaq/Nasdaq_NsmEquities_TotalView_Itch_v5_0_Dissector.lua):
-![img.png](https://raw.githubusercontent.com/jamisonrobey/itch-mold-replay/refs/heads/main/img.png)
-
-## More info / Blog Post
-[Blog post](https://jamisonrobey.com/nasdaq-moldudp64-totalview-itch-feed-simulator/) about the implementation.

@@ -1,0 +1,38 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    container: ubuntu:25.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [debug-gcc, release-gcc, debug-clang, release-clang, asan-gcc, asan-clang, tsan-gcc, tsan-clang]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+      - run: apt-get update && apt-get install -y cmake gcc g++ clang libc++-dev libc++abi-dev lld git ninja-build libgtest-dev
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DBUILD_UNIT_TESTS=ON -DBUILD_INTEGRATION_TESTS=On
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure -j$(nproc)
+ 
+  # -Wunused can fire if we not careful with these flags so just check if builds successfuly for any combo
+  # (preset/compiler doesn't matter)
+  flag-werror-check:
+    runs-on: ubuntu-latest
+    container: ubuntu:25.04
+    strategy:
+      fail-fast: false
+      matrix:
+        flags:
+          - { no_network: ON,  no_sleep: OFF }
+          - { no_network: OFF, no_sleep: ON  }
+          - { no_network: ON,  no_sleep: ON  }
+    steps:
+      - uses: actions/checkout@v4
